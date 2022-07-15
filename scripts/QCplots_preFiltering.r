@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 ################################
 ## QC Plots - qscore filtering
@@ -11,7 +11,7 @@ BaseFolder<-args[1]
 library(ggplot2)
 library(dplyr)
 
-setwd(paste0(BaseFolder, "/wat3r"))
+setwd(paste0(BaseFolder, "/mutcaller"))
 
 ns<-try(read.table("./QC/ns.txt"))
 if(class(ns)=="try-error"){
