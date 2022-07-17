@@ -1,0 +1,29 @@
+name: fastq
+version: "0.1"
+author: scott furlan <furlan_scott@hotmail.com>
+about: parse fastq
+args:
+    - ifastq:
+        long: ifastq
+        short: i
+        takes_value: true
+        required: true
+        help: input fastq
+    - threads:
+        long: threads
+        short: t
+        takes_value: true
+        required: false
+        help: threads
+    - cb_len:
+        long: cb_length
+        short: c
+        takes_value: true
+        required: false
+        help: length of umi sequence
+    - umi_len:
+        long: umi_length
+        short: u
+        takes_value: true
+        required: false
+        help: length of umi sequence
