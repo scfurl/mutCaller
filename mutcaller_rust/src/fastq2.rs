@@ -11,7 +11,6 @@ cargo build
 
 
 
-
 extern crate clap;
 extern crate fastq;
 extern crate parasailors;
