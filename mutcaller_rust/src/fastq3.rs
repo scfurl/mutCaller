@@ -1,8 +1,7 @@
 /*
 
-
+cd ~/develop/mutCaller/mutcaller_rust
 /Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq3 --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz"
-
 */
 
 
@@ -18,6 +17,8 @@ use parasailors as align;
 use clap::{App, load_yaml};
 use std::io::{self, Write};
 use std::io::stdout;
+use std::vec;
+use std::str;
 
 #[derive(Clone)]
 struct Params {
@@ -74,6 +75,7 @@ fn main() {
 
 fn fastq(params: &Params) {
     let mut total: usize = 0;
+    let split_at: u8 = 116 - (params.umi_len + params.cb_len);
     let filename: Option<String> = Some(params.ifastq.to_string());
     // Treat "-" as stdin
     let path = match filename.as_ref().map(String::as_ref) {
@@ -84,7 +86,7 @@ fn fastq(params: &Params) {
         let stopped = parser.each(|record| {
             // stop parsing if we find a sequnce containing 'N'
             record.validate_dnan();
-            modify_qual1(record, &mut total)
+            modify_fastq(record, &mut total, split_at)
         }).expect("Invalid fastq file");
         if stopped {
             println!("The file contains only sequences with ACTGN");
@@ -120,14 +122,23 @@ fn fastq(params: &Params) {
 //     owned_rec
 // }
 
-fn modify_qual1(record: RefRecord, total: &mut usize) -> bool {
+fn modify_fastq(record: RefRecord, total: &mut usize, split_at: u8) -> bool {
     println!("Before mod");
+    println!("{}", String::from_utf8_lossy(record.head()));
+    println!("{}", String::from_utf8_lossy(record.seq()));
     println!("{}", String::from_utf8_lossy(record.qual()));
     let mut owned_rec = RefRecord::to_owned_record(&record);
     let mut curr_bytes = BytesMut::from(owned_rec.qual());
-    curr_bytes[0] = b'$';
-    owned_rec.qual = curr_bytes.to_vec();
+    let (seq, barcode) = &curr_bytes.split_at(split_at.into());
+    owned_rec.qual = seq.to_vec();
+    let mut curr_bytes = BytesMut::from(owned_rec.seq());
+    let (seq, mut barcode) = &curr_bytes.split_at(split_at.into());
+    owned_rec.seq = b"AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT".to_vec();
+    let mut curr_bytes = BytesMut::from(owned_rec.head());
+    owned_rec.head = &mut curr_bytes.to_vec().append(&mut barcode.clone().to_vec());
     println!("After mod");
+    println!("{}", String::from_utf8_lossy(owned_rec.head()));
+    println!("{}", String::from_utf8_lossy(owned_rec.seq()));
     println!("{}", String::from_utf8_lossy(owned_rec.qual()));
     *total += 1;
     true
