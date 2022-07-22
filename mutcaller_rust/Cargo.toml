@@ -19,11 +19,3 @@ path = "src/main.rs"
 [[bin]]
 name = "fastq"
 path = "src/fastq.rs"
-
-[[bin]]
-name = "fastq2"
-path = "src/fastq2.rs"
-
-[[bin]]
-name = "fastq3"
-path = "src/fastq3.rs"
