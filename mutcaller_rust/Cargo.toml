@@ -11,6 +11,9 @@ clap = { version = "2.33.0", features = ["yaml"] }
 fastq = "0.6.0"
 parasailors = "0.3.1"
 bytes = "1.1.0"
+simple-log = "1.5.1"
+toml = "0.5.7"
+serde_derive="1.0.140"
 
 [[bin]]
 name = "mutcaller_rust"

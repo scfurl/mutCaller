@@ -27,3 +27,15 @@ args:
         takes_value: true
         required: false
         help: length of umi sequence
+    - n_reads:
+        long: n_reads
+        short: n
+        takes_value: true
+        required: false
+        help: only run first n reads; use default all to run on all reads
+    - debug:
+        long: debug
+        short: d
+        takes_value: false
+        required: false
+        help: run in debug mode; prints reads before and after modification to stdout
