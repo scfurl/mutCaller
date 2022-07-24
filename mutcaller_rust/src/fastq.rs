@@ -15,27 +15,18 @@ head test.fastq
 measure speed
 */
 
-
 #[macro_use]
 extern crate simple_log;
-
-
 extern crate clap;
 extern crate fastq;
 extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
-
 use bytes::BytesMut;
-// use std::sync::{Arc, Mutex};
 use fastq::{parse_path, Record, RefRecord};
-// use parasailors as align;
 use clap::{App, load_yaml};
 use std::io::{self};
-// use std::io::stdout;
-// use std::vec::Vec;
 
-// #[derive(Clone)]
 struct Params {
     ifastq: String,
     umi_len: u8,
@@ -94,34 +85,8 @@ fn main() {
     let params = load_params();
     fastq(&params);
     info!("done!");
-    // eprintln!("{:?}",config);
 }
 
-// fn fastq(params: &Params) {
-//     let mut total: usize = 0;
-//     let split_at: u8 = 116 - (params.umi_len + params.cb_len);
-//     let filename: Option<String> = Some(params.ifastq.to_string());
-//     // Treat "-" as stdin
-
-//     let path = match filename.as_ref().map(String::as_ref) {
-//         None | Some("-") => { None },
-//         Some(name) => Some(name)
-//     };
-//     parse_path(path, |mut parser| {
-//         let ran: Result<_, std::io::Error> = parser.each(|record_sets| {
-//             for record_set in record_sets {
-//                 for record in record_set.iter() {
-//                     if record.seq().starts_with(b"ATTAATTA") {
-//                         // Early return stops the parser
-//                         return true;
-//                     }
-//                 }
-//             };
-//             false
-//         });
-//     }).expect("Invalid compression");
-
-// }
 
 
 
@@ -137,26 +102,14 @@ fn fastq(params: &Params) {
     };
     parse_path(path, |parser| {
         let _max_reads = params.max_reads;
-        let stopped = parser.each(|record| {
+        let stopped = parser.each( |record| {
             // stop parsing if we find a sequnce containing 'N'
             let valid = record.validate_dnan();
                 if params.debug{
-                    modify_fastq(record, &mut total, split_at)
-                }else{
                     modify_fastq_debug(record, &mut total, split_at)
+                }else{
+                    modify_fastq(record, &mut total, split_at)
                 }
-            
-            // if valid & modified & !params.stop {
-            //     println!("{}", total);
-            // }
-            // true
-            // if params.stop{
-            //     if total == params.max_reads{
-            //         false
-            //     }else{
-            //         true
-            //     }
-            // }
         }).expect("Invalid fastq file");
         if stopped {
             eprintln!("Completed with {} reads processed!", total);
@@ -205,9 +158,6 @@ fn modify_fastq_debug(record: RefRecord, total: &mut usize, split_at: u8) -> boo
     let _ = &curr_bytes.append(&mut barcode.to_vec());
     owned_rec.head = curr_bytes;
     owned_rec.sep = Some(vec!['+' as u8]);
-    // owned_rec.head = &curr_bytes.append(&mut barcode.to_vec());
-    // owned_rec.head = curr_bytes.into_iter().chain(barcode.into_iter()).collect();
-    // owned_rec.head = curr_bytes.to_vec();
     println!("After mod");
     println!("{}", String::from_utf8_lossy(owned_rec.head()));
     println!("{}", String::from_utf8_lossy(owned_rec.seq()));
