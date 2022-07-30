@@ -6,6 +6,11 @@ cat fastq.log
 tail test.fastq
 head test.fastq
 
+/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq -t 8 --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz" > test.fastq
+cat fastq.log
+tail test.fastq
+head test.fastq
+
 /Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz"
 
 */
@@ -83,7 +88,12 @@ fn main() {
     let _ = simple_log::new(config);
     info!("starting!");
     let params = load_params();
-    fastq(&params);
+    eprintln!("Running with {} thread(s)!", params.threads);
+    if params.threads > 1{
+        fastq_parallel(params)
+    }else{
+        fastq(&params)
+    }
     info!("done!");
 }
 
@@ -104,24 +114,69 @@ fn fastq(params: &Params) {
         let _max_reads = params.max_reads;
         let stopped = parser.each( |record| {
             // stop parsing if we find a sequnce containing 'N'
-            let valid = record.validate_dnan();
+            // let valid = record.validate_dnan();
                 if params.debug{
-                    modify_fastq_debug(record, &mut total, split_at)
+                    modify_fastq_debug(record, split_at);
                 }else{
-                    modify_fastq(record, &mut total, split_at)
-                }
+                    modify_fastq(record, split_at);
+                };
+                total += 1;
+                true
         }).expect("Invalid fastq file");
         if stopped {
-            eprintln!("Completed with {} reads processed!", total);
+            eprintln!("Completed; {} reads processed!", total);
         } else {
             eprintln!("The file contains invalid sequences");
         }
     }).expect("Invalid compression");
 }
 
+fn fastq_parallel(params: Params) {
+    let filename: Option<String> = Some(params.ifastq.to_string());
+    // Treat "-" as stdin
+    let path = match filename.as_ref().map(String::as_ref) {
+        None | Some("-") => { None },
+        Some(name) => Some(name)
+    };
+    parse_path(path, |parser| {
+        let results: Vec<usize> = parser.parallel_each(params.threads, |record_sets| {
+            // let params = params;
+            // let split_at: u8 = 116 - (params.umi_len + params.cb_len);
+            // let debug: bool = params.debug;
+            let mut thread_total = 0;
+            for record_set in record_sets {
+                for record in record_set.iter() {
+                    // let valid = record.validate_dnan(); FIXME LATER
+                        let valid = modify_fastq(record, 90);
+                        if valid {
+                            thread_total += 1;
+                        }
+                        // if params.debug{
+                        //     let valid = modify_fastq_debug(record, 90);
+                        //     if valid {
+                        //         thread_total += 1;
+                        //     }
+                        // }else{
+                        //     let valid = modify_fastq(record, 90);
+                        //     if valid {
+                        //         thread_total += 1;
+                        //     }
+                        // }
+                }
+            }
+            // The values we return (it can be any type implementing `Send`)
+            // are collected from the different threads by
+            // `parser.parallel_each` and returned. See doc for a description of
+            // error handling.
+            thread_total
+        }).expect("Invalid fastq file");
+        eprintln!("Completed; {} reads processed!", results.iter().sum::<usize>());
+    }).expect("Invalid compression");
+}
 
 
-fn modify_fastq (record: RefRecord, total: &mut usize, split_at: u8) -> bool {
+
+fn modify_fastq (record: RefRecord, split_at: u8) -> bool {
     let mut writer = io::stdout();
     let mut owned_rec = RefRecord::to_owned_record(&record);
     let curr_bytes = BytesMut::from(owned_rec.qual());
@@ -136,12 +191,11 @@ fn modify_fastq (record: RefRecord, total: &mut usize, split_at: u8) -> bool {
     owned_rec.head = curr_bytes;
     owned_rec.sep = Some(vec!['+' as u8]);
     let _ = &owned_rec.write(&mut writer);
-    *total += 1;
     true
 }
 
 
-fn modify_fastq_debug(record: RefRecord, total: &mut usize, split_at: u8) -> bool {
+fn modify_fastq_debug(record: RefRecord, split_at: u8) -> bool {
     println!("Before mod");
     println!("{}", String::from_utf8_lossy(record.head()));
     println!("{}", String::from_utf8_lossy(record.seq()));
@@ -162,7 +216,6 @@ fn modify_fastq_debug(record: RefRecord, total: &mut usize, split_at: u8) -> boo
     println!("{}", String::from_utf8_lossy(owned_rec.head()));
     println!("{}", String::from_utf8_lossy(owned_rec.seq()));
     println!("{}", String::from_utf8_lossy(owned_rec.qual()));
-    *total += 1;
     true
 }
 
