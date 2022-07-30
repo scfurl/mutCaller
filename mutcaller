@@ -236,83 +236,86 @@ ntotal=$(printf 'N%.0s' $(seq 1 $(($BClength + $UMIlength))))
 ntotal=$(echo "^$ntotal")
 cat sample.fastq | paste - - - - | awk -v ntotal=$ntotal -F '\t' '{if ($2 !~ntotal){ print $0}}'| tr "\t" "\n" > sample_filtered.fastq
 
-# number of reads
-nr=$(echo $(cat sample_filtered.fastq|wc -l)/4|bc)
-echo -e "Barcode Correction\t${nr}" >> ${BaseFolder}/mutcaller/mutcallerMetrics.txt
-
-mv sample_filtered.fastq ${BaseFolder}/mutcaller/
-
-### --------------------------------------------------------------------------
-
-cd ${BaseFolder}/mutcaller/
-
-# 1) Find barcodes and convert them in tag
-# MaskPrimers extract => look for the barcodes in a fixed sequence region
-	# -s: input fastq
-	# --start: starting position of the sequence to extract
-	# --len: lenght of the sequence to extract
-	# --pf: name for the resulting tag containing the barcode
-	# --mode cut: remove barcode region from sequence
-	# --failed: creates file containing records that failed
-
-mylength=$(($BClength + $UMIlength))
-MaskPrimers.py extract -s sample_filtered.fastq --start 0 --len ${mylength} --pf BARCODE --mode cut --failed --log MP.log --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
-
-# Count Ns per line
-cat sample_filtered_primers-pass.fastq | awk 'NR%4==2' | grep -o -n 'N' | cut -d : -f 1 | uniq -c > QC/ns.txt
-
-# Q average score per read
-cat sample_filtered_primers-pass.fastq | perl -ne 'chomp;print;<STDIN>;<STDIN>;$_ = <STDIN>;map{ $score += ord($_)-33} 
-split(""); print " " .($score/length($_))."\n";$score=0;' > QC/qscore.txt
-
-## QC Plots: N number and Q score
-${ScriptDir}/scripts/QCplots_preFiltering.r $BaseFolder
-
-# 2) Quality filter
-	# -q: quality score threshold
-	# -s: input fastq	
-	# --failed: creates file containing records that failed
-
-FilterSeq.py quality -q ${MyQScore} -s sample_filtered_primers-pass.fastq --failed --log FS.log --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
-
-# number of reads
-nr=$(cat sample_filtered_primers-pass_quality-pass.fastq|echo $((`wc -l`/4)))
-echo -e "Qscore filtering\t${nr}" >> ${BaseFolder}/mutcaller/mutcallerMetrics.txt
-
-
-# 3) Cluster sequences with same BC+UMI => discard products of barcode swapping
-	# -s: input sequence
-	# -f: annotation field used for grouping
-	# -k: output field name
-	# --ident: sequence identity threshold for the uclust algorithm
 
 echo -e "Done for now!"
 
-# ClusterSets.py set -s sample_filtered_primers-pass_quality-pass.fastq -f BARCODE -k CLUSTER --log CS.log --failed --ident ${MyIdentity} --exec /usr/local/bin/usearch --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+# # number of reads
+# nr=$(echo $(cat sample_filtered.fastq|wc -l)/4|bc)
+# echo -e "Barcode Correction\t${nr}" >> ${BaseFolder}/mutcaller/mutcallerMetrics.txt
 
-# # Join BARCODE and CLUSTER header tags
-# ParseHeaders.py merge -s sample_filtered_primers-pass_quality-pass_cluster-pass.fastq -f BARCODE CLUSTER -k BARCODE_CLUSTER --delim "|" "=" "_" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+# mv sample_filtered.fastq ${BaseFolder}/mutcaller/
 
-# # Extract BC + UMI + cluster
-# cat sample_filtered_primers-pass_quality-pass_cluster-pass_reheader.fastq | awk 'NR%4==1' | awk 'BEGIN{FS="="};{print $4};END{}' > "${BaseFolder}/fastq_processed/BCSeq_final_filtered_qfiltered_cluster.txt" 
+# ### --------------------------------------------------------------------------
 
-# ## QC plots: cluster proportion and ratio
-# ${ScriptDir}/scripts/QCplots_clustering.r $BaseFolder $BClength $UMIlength
+# cd ${BaseFolder}/mutcaller/
 
-# # 4) Determines consensus for each BC/UMI
+# # 1) Find barcodes and convert them in tag
+# # MaskPrimers extract => look for the barcodes in a fixed sequence region
+# 	# -s: input fastq
+# 	# --start: starting position of the sequence to extract
+# 	# --len: lenght of the sequence to extract
+# 	# --pf: name for the resulting tag containing the barcode
+# 	# --mode cut: remove barcode region from sequence
+# 	# --failed: creates file containing records that failed
+
+# mylength=$(($BClength + $UMIlength))
+# MaskPrimers.py extract -s sample_filtered.fastq --start 0 --len ${mylength} --pf BARCODE --mode cut --failed --log MP.log --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+
+# # Count Ns per line
+# cat sample_filtered_primers-pass.fastq | awk 'NR%4==2' | grep -o -n 'N' | cut -d : -f 1 | uniq -c > QC/ns.txt
+
+# # Q average score per read
+# cat sample_filtered_primers-pass.fastq | perl -ne 'chomp;print;<STDIN>;<STDIN>;$_ = <STDIN>;map{ $score += ord($_)-33} 
+# split(""); print " " .($score/length($_))."\n";$score=0;' > QC/qscore.txt
+
+# ## QC Plots: N number and Q score
+# ${ScriptDir}/scripts/QCplots_preFiltering.r $BaseFolder
+
+# # 2) Quality filter
+# 	# -q: quality score threshold
 # 	# -s: input fastq	
-# 	# --bf: tag by which to group sequences
-# 	# -n: minimun number of sequences required to define a consensus
-# 	# --maxerror: calculate error rate (number of missmatches) per consensus and remove groups exceding the given value
-# 	# --maxgap: frequency of allowed gap values for each position. Positions exceeding the threshold are deleted from the consensus
+# 	# --failed: creates file containing records that failed
 
-# BuildConsensus.py -s sample_filtered_primers-pass_quality-pass_cluster-pass_reheader.fastq  --bf BARCODE_CLUSTER -n 3 --maxerror ${MyMaxError} --maxgap ${MyMaxGap} --outname consensus --log BC.log --failed --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+# FilterSeq.py quality -q ${MyQScore} -s sample_filtered_primers-pass.fastq --failed --log FS.log --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
 
-# nreads=$(cat  BC.log | grep "SEQCOUNT" | awk -F " " '{sum+=$2};END{print sum}')   ## count number of sequences reviewed
+# # number of reads
+# nr=$(cat sample_filtered_primers-pass_quality-pass.fastq|echo $((`wc -l`/4)))
+# echo -e "Qscore filtering\t${nr}" >> ${BaseFolder}/mutcaller/mutcallerMetrics.txt
 
-# echo "Reads used for consensus building: ${nreads}" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
 
-# # convert consensus fastq into fasta
-# paste - - - - < consensus_consensus-pass.fastq | cut -f 1,2 | sed 's/^@/>/' | tr "\t" "\n" > sample.fa
+# # 3) Cluster sequences with same BC+UMI => discard products of barcode swapping
+# 	# -s: input sequence
+# 	# -f: annotation field used for grouping
+# 	# -k: output field name
+# 	# --ident: sequence identity threshold for the uclust algorithm
+
+# echo -e "Done for now!"
+
+# # ClusterSets.py set -s sample_filtered_primers-pass_quality-pass.fastq -f BARCODE -k CLUSTER --log CS.log --failed --ident ${MyIdentity} --exec /usr/local/bin/usearch --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+
+# # # Join BARCODE and CLUSTER header tags
+# # ParseHeaders.py merge -s sample_filtered_primers-pass_quality-pass_cluster-pass.fastq -f BARCODE CLUSTER -k BARCODE_CLUSTER --delim "|" "=" "_" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+
+# # # Extract BC + UMI + cluster
+# # cat sample_filtered_primers-pass_quality-pass_cluster-pass_reheader.fastq | awk 'NR%4==1' | awk 'BEGIN{FS="="};{print $4};END{}' > "${BaseFolder}/fastq_processed/BCSeq_final_filtered_qfiltered_cluster.txt" 
+
+# # ## QC plots: cluster proportion and ratio
+# # ${ScriptDir}/scripts/QCplots_clustering.r $BaseFolder $BClength $UMIlength
+
+# # # 4) Determines consensus for each BC/UMI
+# # 	# -s: input fastq	
+# # 	# --bf: tag by which to group sequences
+# # 	# -n: minimun number of sequences required to define a consensus
+# # 	# --maxerror: calculate error rate (number of missmatches) per consensus and remove groups exceding the given value
+# # 	# --maxgap: frequency of allowed gap values for each position. Positions exceeding the threshold are deleted from the consensus
+
+# # BuildConsensus.py -s sample_filtered_primers-pass_quality-pass_cluster-pass_reheader.fastq  --bf BARCODE_CLUSTER -n 3 --maxerror ${MyMaxError} --maxgap ${MyMaxGap} --outname consensus --log BC.log --failed --nproc ${MyCoreNumber} 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+
+# # nreads=$(cat  BC.log | grep "SEQCOUNT" | awk -F " " '{sum+=$2};END{print sum}')   ## count number of sequences reviewed
+
+# # echo "Reads used for consensus building: ${nreads}" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
+
+# # # convert consensus fastq into fasta
+# # paste - - - - < consensus_consensus-pass.fastq | cut -f 1,2 | sed 's/^@/>/' | tr "\t" "\n" > sample.fa
 
 
