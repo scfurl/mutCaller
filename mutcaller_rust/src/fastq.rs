@@ -40,6 +40,7 @@ struct Params {
     max_reads: usize,
     stop: bool,
     debug: bool,
+    name_sep: String,
 }
 
 fn load_params() -> Params {
@@ -53,10 +54,11 @@ fn load_params() -> Params {
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<u8>().unwrap();
     let umi_len = params.value_of("umi_len").unwrap_or("10");
-    let umi_len = umi_len.to_string().parse::<u8>().unwrap() - 1;
+    let umi_len = umi_len.to_string().parse::<u8>().unwrap();
     let cb_len = params.value_of("cb_len").unwrap_or("16");
-    let cb_len = cb_len.to_string().parse::<u8>().unwrap() - 1;
+    let cb_len = cb_len.to_string().parse::<u8>().unwrap();
     let _max_reads = params.value_of("n_reads").unwrap_or("all");
+    let name_sep = params.value_of("name_sep").unwrap_or("|BARCODE=");
     if _max_reads == "all"{
         let stop = false;
         let max_r = 0usize;
@@ -72,6 +74,7 @@ fn load_params() -> Params {
         max_reads: max_r,
         stop: stop,
         debug: debug,
+        name_sep: name_sep.to_string(),
     }
 }
 
@@ -102,7 +105,8 @@ fn main() {
 
 fn fastq(params: &Params) {
     let mut total: usize = 0;
-    let split_at: u8 = 116 - (params.umi_len + params.cb_len);
+    let split_at = params.umi_len + params.cb_len;
+    let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
     let filename: Option<String> = Some(params.ifastq.to_string());
     // Treat "-" as stdin
 
@@ -116,9 +120,9 @@ fn fastq(params: &Params) {
             // stop parsing if we find a sequnce containing 'N'
             // let valid = record.validate_dnan();
                 if params.debug{
-                    modify_fastq_debug(record, split_at);
+                    modify_fastq_debug(record, split_at, &sep);
                 }else{
-                    modify_fastq(record, split_at);
+                    modify_fastq(record, split_at, &sep);
                 };
                 total += 1;
                 true
@@ -132,6 +136,7 @@ fn fastq(params: &Params) {
 }
 
 fn fastq_parallel(params: Params) {
+    //BROKEN
     let filename: Option<String> = Some(params.ifastq.to_string());
     // Treat "-" as stdin
     let path = match filename.as_ref().map(String::as_ref) {
@@ -139,7 +144,7 @@ fn fastq_parallel(params: Params) {
         Some(name) => Some(name)
     };
     parse_path(path, |parser| {
-        let results: Vec<usize> = parser.parallel_each(params.threads, |record_sets| {
+        let results: Vec::<usize> = parser.parallel_each(params.threads, |record_sets| {
             // let params = params;
             // let split_at: u8 = 116 - (params.umi_len + params.cb_len);
             // let debug: bool = params.debug;
@@ -147,10 +152,11 @@ fn fastq_parallel(params: Params) {
             for record_set in record_sets {
                 for record in record_set.iter() {
                     // let valid = record.validate_dnan(); FIXME LATER
-                        let valid = modify_fastq(record, 90);
-                        if valid {
-                            thread_total += 1;
-                        }
+                    let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
+                    let valid = modify_fastq(record, 90, &sep);
+                    if valid {
+                        thread_total += 1;
+                    }
                         // if params.debug{
                         //     let valid = modify_fastq_debug(record, 90);
                         //     if valid {
@@ -176,17 +182,19 @@ fn fastq_parallel(params: Params) {
 
 
 
-fn modify_fastq (record: RefRecord, split_at: u8) -> bool {
+fn modify_fastq (record: RefRecord, split_at: u8, namesep: &Vec<u8>) -> bool {
+    let sep: &mut Vec::<u8> = &mut namesep.clone();
     let mut writer = io::stdout();
     let mut owned_rec = RefRecord::to_owned_record(&record);
     let curr_bytes = BytesMut::from(owned_rec.qual());
-    let (seq, _barcode) = &curr_bytes.split_at(split_at.into());
+    let (_barcode, seq) = &curr_bytes.split_at(split_at.into());
     owned_rec.qual = seq.to_vec();
     let curr_bytes = BytesMut::from(owned_rec.seq());
-    let (seq, barcode) = &curr_bytes.split_at(split_at.into());
+    let (barcode, seq) = &curr_bytes.split_at(split_at.into());
     owned_rec.seq = seq.to_vec();
     let mut curr_bytes = BytesMut::from(owned_rec.head()).to_vec();
-    let _ = &curr_bytes.push(':' as u8);
+    // let _ = &curr_bytes.push(namesep);
+    let _ = &curr_bytes.append(sep);
     let _ = &curr_bytes.append(&mut barcode.to_vec());
     owned_rec.head = curr_bytes;
     owned_rec.sep = Some(vec!['+' as u8]);
@@ -195,20 +203,21 @@ fn modify_fastq (record: RefRecord, split_at: u8) -> bool {
 }
 
 
-fn modify_fastq_debug(record: RefRecord, split_at: u8) -> bool {
+fn modify_fastq_debug(record: RefRecord, split_at: u8, namesep: &Vec<u8>) -> bool {
+    let sep: &mut Vec::<u8> = &mut namesep.clone();
     println!("Before mod");
     println!("{}", String::from_utf8_lossy(record.head()));
     println!("{}", String::from_utf8_lossy(record.seq()));
     println!("{}", String::from_utf8_lossy(record.qual()));
     let mut owned_rec = RefRecord::to_owned_record(&record);
     let curr_bytes = BytesMut::from(owned_rec.qual());
-    let (seq, _barcode) = &curr_bytes.split_at(split_at.into());
+    let (_barcode, seq) = &curr_bytes.split_at(split_at.into());
     owned_rec.qual = seq.to_vec();
     let curr_bytes = BytesMut::from(owned_rec.seq());
-    let (seq, barcode) = &curr_bytes.split_at(split_at.into());
+    let (barcode, seq) = &curr_bytes.split_at(split_at.into());
     owned_rec.seq = seq.to_vec();
     let mut curr_bytes = BytesMut::from(owned_rec.head()).to_vec();
-    let _ = &curr_bytes.push(':' as u8);
+    let _ = &curr_bytes.append(sep);
     let _ = &curr_bytes.append(&mut barcode.to_vec());
     owned_rec.head = curr_bytes;
     owned_rec.sep = Some(vec!['+' as u8]);

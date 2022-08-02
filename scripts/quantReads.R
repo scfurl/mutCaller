@@ -10,7 +10,7 @@ if(!file.exists(gtffile)){stop(paste0("GTF file not found: ", gtffile))}
 gff0 <- import(gtffile)
 idx <- mcols(gff0)$type == "exon"
 genes<- split(gff0[idx], mcols(gff0[idx])[["gene_id"]])
-filenames <- "Aligned.out.bam"
+filenames <- "Aligned.sortedByCoord.out.bam"
 if(!all(file.exists(filenames))){stop("All Bam files not found")}
 bamfiles <- BamFileList(filenames, yieldSize=yield_size)
 names(bamfiles) <- filenames

@@ -39,3 +39,9 @@ args:
         takes_value: false
         required: false
         help: run in debug mode; prints reads before and after modification to stdout
+    - name_sep:
+        long: name_sep
+        short: s
+        takes_value: true
+        required: false
+        help: string to demarcate barcode in name of read
