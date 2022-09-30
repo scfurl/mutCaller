@@ -170,8 +170,10 @@ if [ ${CorrectBC} = true ]; then
 					 -o BCcorrected 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
 	## extract UMIs and join to corrected barcodes
 	mystart=$((BClength + 1))
+	QCend=$((BClength + $UMIlength))
 	cat BCSeq.txt | awk -v mystart=$mystart -v myend=$UMIlength '{print substr($0,mystart,myend)}' > UMI.txt
 	paste -d '' BCcorrected.txt UMI.txt > BCcorrectedUMI.txt
+	cat BCQC.txt | awk -v mystart=1 -v myend=$QCend '{print substr($0,mystart,myend)}' > BCQCadj.txt
 
 	## Mask every UMI with no valid barcode
 	nbc=$(printf 'N%.0s' $(seq 1 $BClength))
@@ -202,7 +204,9 @@ fi
 ## Skip barcode correction
 if [ ${CorrectBC} = false ]; then
 	echo "SKIPPING CORRECTING BARCODES" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
-		
+	QCend=$((BClength + $UMIlength))
+	cat BCQC.txt | awk -v mystart=1 -v myend=$QCend '{print substr($0,mystart,myend)}' > BCQCadj.txt
+
 	## Correct UMIs
 	if [ ${CorrectUMI} = true ]; then
 		echo "CORRECTING UMI" 2>&1 | tee -a ${BaseFolder}/mutcaller/mutcaller.log
@@ -228,7 +232,7 @@ fi
 
 ## New fastq
 paste -d '' BCSeq_final.txt MUTSeq.txt > Read1.txt
-paste -d '' BCQC.txt MUTQC.txt > Read1_Q.txt
+paste -d '' BCQCadj.txt MUTQC.txt > Read1_Q.txt
 paste -d '\n' seqHeaders.txt Read1.txt qualHeaders.txt Read1_Q.txt > sample.fastq
 
 ## Remove reads with NNNN...N in BC + UMI
