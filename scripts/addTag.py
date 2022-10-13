@@ -23,8 +23,8 @@ def iterate(args):
 def main():
   parser = argparse.ArgumentParser(prog='addTags', description="parse BAM sequence name for barcode and add as bam tags")
   parser.add_argument('bam', type=argparse.FileType('r'), help=" BAM file ")
-  parser.add_argument('-u', '--umi_len', default=10, help="length of umi")
-  parser.add_argument('-c', '--cb_len', default=18, help="length of cb")
+  parser.add_argument('-u', '--umi_len', type=int, default=10, help="length of umi")
+  parser.add_argument('-c', '--cb_len', type=int, default=18, help="length of cb")
   parser.add_argument('-s', '--sep', default="|BARCODE=", help="string separator")
   parser.set_defaults(func=iterate)
   args = parser.parse_args()
