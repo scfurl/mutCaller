@@ -41,7 +41,7 @@ Help()
 # done
 # SCRIPT_PATH="$(readlink -f "${SCRIPT_PATH}")"
 # ScriptDir="$(cd -P "$(dirname -- "${SCRIPT_PATH}")" >/dev/null 2>&1 && pwd)"
-ScriptDir=/home/sfurlan/develop/mutCaller  ####This needs to be fixed
+ScriptDir=~/develop/mutCaller  ####This needs to be fixed
 BaseFolder=$(pwd)
 CorrectBC=true
 CorrectUMI=true
