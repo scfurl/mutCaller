@@ -21,3 +21,27 @@ args:
         takes_value: true
         required: false
         help: split read name by
+    - no_header:
+        long: no_header
+        short: nh
+        takes_value: false
+        required: false
+        help: include header in output
+    - joiner:
+        long: joiner
+        short: j
+        takes_value: true
+        required: false
+        help: character to rejoin read name with barcode
+    - cb_len:
+        long: cb_len
+        short: c
+        takes_value: true
+        required: false
+        help: cell barcode length
+    - umi_len:
+        long: umi_len
+        short: u
+        takes_value: true
+        required: false
+        help: cell barcode length
