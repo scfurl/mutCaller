@@ -14,7 +14,7 @@ measure speed
 extern crate simple_log;
 extern crate clap;
 extern crate fastq;
-extern crate parasailors;
+// extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
 use bytes::BytesMut;
@@ -84,12 +84,8 @@ fn main() {
     let _ = simple_log::new(config);
     info!("starting!");
     let params = load_params();
-    eprintln!("Running with {} thread(s)!", params.threads);
-    if params.threads > 1{
-        fastq(&params)
-    }else{
-        fastq(&params)
-    }
+    eprintln!("Running with {} thread(s)!", &params.threads);
+    fastq(&params);
     info!("done!");
 }
 
@@ -97,7 +93,7 @@ fn main() {
 
 fn fastq(params: &Params) {
     let mut total: usize = 0;
-    let split_at = params.umi_len + params.cb_len;
+    let split_at = &params.umi_len + &params.cb_len;
     let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
@@ -113,7 +109,7 @@ fn fastq(params: &Params) {
                 //     counts.1 += 1;
                 // }
                 if rec1.is_some() & rec2.is_some(){
-                    eval_reads(&rec1.unwrap(), &rec2.unwrap())
+                    let good = eval_reads(&rec1.unwrap(), &rec2.unwrap());
                 }
                 // eval_reads(rec1, rec2)
                 (true, true)
@@ -127,12 +123,14 @@ fn fastq(params: &Params) {
     // println!("Number of reads: ({}, {})", counts.0, counts.1);
 }
 
-pub fn eval_reads(rec1: &RefRecord, rec2: &RefRecord){
+pub fn eval_reads(rec1: &RefRecord, rec2: &RefRecord) -> bool{
     let mut writer = io::stdout();
     if rec2.seq().contains(&b"N"[0]){
         println!("true");
+        false
     }else{
         println!("false");
+        true
     }
     // println!("{:?}",rec1.seq())
 }

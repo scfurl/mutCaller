@@ -37,7 +37,7 @@ time ~/develop/mutCaller/addTags.py -u 10 -c 16 /home/sfurlan/develop/mutCaller/
 extern crate simple_log;
 extern crate clap;
 extern crate bam;
-extern crate parasailors;
+// extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
 use bytes::BytesMut;

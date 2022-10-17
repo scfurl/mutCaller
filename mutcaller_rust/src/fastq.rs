@@ -24,7 +24,7 @@ measure speed
 extern crate simple_log;
 extern crate clap;
 extern crate fastq;
-extern crate parasailors;
+// extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
 use bytes::BytesMut;

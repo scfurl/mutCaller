@@ -324,7 +324,6 @@ dependencies = [
  "bytes",
  "clap",
  "fastq",
- "parasailors",
  "serde_derive",
  "simple-log",
  "toml",
@@ -362,25 +361,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3305af35278dd29f46fcdd139e0b1fbfae2153f0e5928b39b035542dd31e37b7"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "parasail-sys"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c9968cf65a9bd79a05d3134685ba5b47e896ec3921c3149afff3ab69ae3ce94"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "parasailors"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fc4de8ac840bdcfdf7f61799e4cf01ea9644b80912b3598b409099c3fc72163"
-dependencies = [
- "libc",
- "parasail-sys",
 ]
 
 [[package]]
