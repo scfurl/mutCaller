@@ -8,6 +8,7 @@ edition = "2021"
 bam = "0.1.4"
 clap = { version = "2.33.0", features = ["yaml"] }
 fastq = "0.6.0"
+flate2 = "1.0.24"
 bytes = "1.1.0"
 simple-log = "1.5.1"
 toml = "0.5.7"

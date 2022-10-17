@@ -5,16 +5,22 @@ about: parse fastqs
 args:
     - fastq1:
         long: fastq1
-        short: b
+        short: f1
         takes_value: true
         required: true
         help: input fastq with barcodes
     - fastq2:
         long: fastq2
-        short: br
+        short: f2
         takes_value: true
         required: true
         help: input fastq with read
+    - outfastq:
+        long: outfastq
+        short: o
+        takes_value: true
+        required: false
+        help: output fastq
     - threads:
         long: threads
         short: t

@@ -324,6 +324,7 @@ dependencies = [
  "bytes",
  "clap",
  "fastq",
+ "flate2",
  "serde_derive",
  "simple-log",
  "toml",
