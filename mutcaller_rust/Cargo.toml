@@ -15,9 +15,17 @@ toml = "0.5.7"
 serde_derive="1.0.140"
 
 [[bin]]
-name = "mutcaller_rust"
-path = "src/main.rs"
+name = "addtag"
+path = "src/addtag.rs"
 
 [[bin]]
 name = "fastq"
 path = "src/fastq.rs"
+
+[[bin]]
+name = "count"
+path = "src/count.rs"
+
+[[bin]]
+name = "fastq1"
+path = "src/fastq1.rs"
