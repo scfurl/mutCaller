@@ -10,6 +10,8 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 test
 measure speed
 */
 
+
+
 #[macro_use]
 extern crate simple_log;
 extern crate clap;
@@ -21,6 +23,10 @@ use bytes::BytesMut;
 use fastq::{parse_path, Record, RefRecord, each_zipped};
 use clap::{App, load_yaml};
 use std::io::{self};
+
+
+#[derive(Debug)]
+
 
 struct Params {
     fastq1: String,
@@ -34,6 +40,31 @@ struct Params {
     name_sep: String,
 }
 
+pub struct ReadPair<'a> {
+    rec1: RefRecord<'a>,
+    rec2: RefRecord<'a>,
+    passQC: bool,
+    hasN: bool,
+}
+
+impl ReadPair <'_> {
+    fn checkN(mut self){
+        if self.rec1.seq().contains(&b"N"[0]) | self.rec2.seq().contains(&b"N"[0]){
+            self.hasN = true;
+        } else{
+            self.hasN = false;
+        }
+    }
+    fn finalcheck(mut self){
+        if self.hasN{
+            self.passQC = false;
+        }else{
+            self.passQC = true;
+        }
+    }
+}
+
+
 fn load_params() -> Params {
     let max_r = 0usize;
     let stop = true;
@@ -42,7 +73,7 @@ fn load_params() -> Params {
     let debug = params.value_of("debug").unwrap_or("false");
     let debug = debug.to_string().parse::<bool>().unwrap();
     let fastq1 = params.value_of("fastq1").unwrap();
-    let fastq2 = params.value_of("fastq2").unwrap();
+    let _fastq2 = params.value_of("fastq2").unwrap();
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<u8>().unwrap();
     let umi_len = params.value_of("umi_len").unwrap_or("10");
@@ -52,11 +83,11 @@ fn load_params() -> Params {
     let _max_reads = params.value_of("n_reads").unwrap_or("all");
     let name_sep = params.value_of("name_sep").unwrap_or("|BARCODE=");
     if _max_reads == "all"{
-        let stop = false;
-        let max_r = 0usize;
+        let _stop = false;
+        let _max_r = 0usize;
     }else{
-        let stop = true;
-        let max_r = _max_reads.to_string().parse::<usize>().unwrap();
+        let _stop = true;
+        let _max_r = _max_reads.to_string().parse::<usize>().unwrap();
     }
     Params{
         fastq1: fastq1.to_string(),
@@ -92,13 +123,13 @@ fn main() {
 
 
 fn fastq(params: &Params) {
-    let mut total: usize = 0;
-    let split_at = &params.umi_len + &params.cb_len;
-    let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
+    let _total: usize = 0;
+    let _split_at = &params.umi_len + &params.cb_len;
+    let _sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
-    let mut counts = (0u64, 0u64);
-    let mut writer = io::stdout();
+    let _counts = (0u64, 0u64);
+    let _writer = io::stdout();
     parse_path(Some(fastq1), |parser1| {
         parse_path(Some(fastq2), |parser2| {
             each_zipped(parser1, parser2, |rec1, rec2| {
@@ -109,7 +140,19 @@ fn fastq(params: &Params) {
                 //     counts.1 += 1;
                 // }
                 if rec1.is_some() & rec2.is_some(){
-                    let good = eval_reads(&rec1.unwrap(), &rec2.unwrap());
+                    // let _good = eval_reads(&rec1.unwrap(), &rec2.unwrap());
+                    let rp = ReadPair{
+                        rec1: rec1.unwrap(),
+                        rec2: rec2.unwrap(),
+                        hasN: false,
+                        passQC: false,
+                    };
+                    // let mut rp.hasN = mut rp.checkN();
+                    // rp.checkN();
+                    {
+                        println!("{}", rp.hasN);
+                    }
+                    // rp.finalcheck();
                 }
                 // eval_reads(rec1, rec2)
                 (true, true)
@@ -123,22 +166,22 @@ fn fastq(params: &Params) {
     // println!("Number of reads: ({}, {})", counts.0, counts.1);
 }
 
-pub fn eval_reads(rec1: &RefRecord, rec2: &RefRecord) -> bool{
-    let mut writer = io::stdout();
-    if rec2.seq().contains(&b"N"[0]){
-        println!("true");
-        false
-    }else{
-        println!("false");
-        true
-    }
-    // println!("{:?}",rec1.seq())
-}
+// pub fn eval_reads(_rec1: &RefRecord, rec2: &RefRecord) -> bool{
+//     let _writer = io::stdout();
+//     if rec2.seq().contains(&b"N"[0]){
+//         println!("true");
+//         false
+//     }else{
+//         println!("false");
+//         true
+//     }
+//     // println!("{:?}",rec1.seq())
+// }
 
 fn fastq_count(params: &Params) {
-    let mut total: usize = 0;
-    let split_at = params.umi_len + params.cb_len;
-    let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
+    let _total: usize = 0;
+    let _split_at = params.umi_len + params.cb_len;
+    let _sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
     let mut counts = (0u64, 0u64);

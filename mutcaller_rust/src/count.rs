@@ -35,9 +35,9 @@ use std::io;
 use clap::{App, load_yaml};
 use std::str;
 // use bam::header::{Header, HeaderEntry};
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::convert::TryInto;
+
+
+
 
 
 // #[derive(Clone)]
@@ -48,7 +48,7 @@ struct Params {
     joiner: String,
     threads: usize,
     cb_len: usize, 
-    umi_len: usize,
+    // umi_len: usize,
     read_len: usize,
 }
 
@@ -63,8 +63,8 @@ fn load_params() -> Params {
     let cb_len = cb_len.to_string().parse::<usize>().unwrap() - 1;
     let read_len = params.value_of("read_len").unwrap_or("90");
     let read_len = read_len.to_string().parse::<usize>().unwrap();
-    let umi_len = params.value_of("umi_len").unwrap_or("10");
-    let umi_len = umi_len.to_string().parse::<usize>().unwrap() - 1;
+    // let umi_len = params.value_of("umi_len").unwrap_or("10");
+    // let umi_len = umi_len.to_string().parse::<usize>().unwrap() - 1;
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<usize>().unwrap() - 1;
     Params{
@@ -73,7 +73,7 @@ fn load_params() -> Params {
         split: split.to_string(),
         joiner: joiner.to_string(),
         cb_len: cb_len,
-        umi_len: umi_len,
+        // umi_len: umi_len,
         read_len: read_len,
     }
 }
@@ -87,13 +87,13 @@ fn main() {
 fn count(params: &Params) {
     let mut total: usize = 0;
     let mut goodreadcount: usize = 0;
-    let (read_threads, write_threads) = if (*&params.threads as i8) > 2{
+    let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{
         (((*&params.threads/2) -1) as u16, ((*&params.threads/2) -1) as u16)
     } else {
         (0 as u16, 0 as u16)
     };
     let reader = bam::BamReader::from_path(params.ibam.to_string(), 0).unwrap();
-    let output = io::BufWriter::new(io::stdout());
+    let _output = io::BufWriter::new(io::stdout());
     let header = reader.header().clone();
     let data = header.reference_names();
     let mut seqnames = Vec::new();
@@ -117,7 +117,7 @@ fn count(params: &Params) {
         //     continue;
         // }
         let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
-        let modified_name = seqname.replace(&params.split, &params.joiner);
+        let _modified_name = seqname.replace(&params.split, &params.joiner);
         let (cb_umi_s1, cb_umi_s2) = cbumi.split_at(params.cb_len+1);
         let mut good_read = false;
         let cigarmatch = format!("{}M", *&params.read_len);

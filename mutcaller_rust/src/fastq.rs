@@ -60,11 +60,11 @@ fn load_params() -> Params {
     let _max_reads = params.value_of("n_reads").unwrap_or("all");
     let name_sep = params.value_of("name_sep").unwrap_or("|BARCODE=");
     if _max_reads == "all"{
-        let stop = false;
-        let max_r = 0usize;
+        let _stop = false;
+        let _max_r = 0usize;
     }else{
-        let stop = true;
-        let max_r = _max_reads.to_string().parse::<usize>().unwrap();
+        let _stop = true;
+        let _max_r = _max_reads.to_string().parse::<usize>().unwrap();
     }
     Params{
         ifastq: ifastq.to_string(),
@@ -91,6 +91,7 @@ fn main() {
     let _ = simple_log::new(config);
     info!("starting!");
     let params = load_params();
+    eprintln!("Stopping at {}", params.stop);
     eprintln!("Running with {} thread(s)!", params.threads);
     if params.threads > 1{
         fastq_parallel(params)
@@ -106,7 +107,7 @@ fn main() {
 fn fastq(params: &Params) {
     let mut total: usize = 0;
     let split_at = params.umi_len + params.cb_len;
-    let sep: Vec::<u8> = "|BARCODE=".as_bytes().to_vec();
+    let sep: Vec::<u8> = params.name_sep.as_bytes().to_vec();
     let filename: Option<String> = Some(params.ifastq.to_string());
     // Treat "-" as stdin
 

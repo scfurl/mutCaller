@@ -40,10 +40,10 @@ extern crate bam;
 // extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
-use bytes::BytesMut;
+
 use bam::RecordWriter;
 use clap::{App, load_yaml};
-use std::io::{self};
+
 use std::str;
 
 // #[derive(Clone)]
@@ -56,7 +56,7 @@ struct Params {
     threads: usize,
     // include_header: bool,
     cb_len: usize, 
-    umi_len: usize,
+    // umi_len: usize,
 }
 
 fn load_params() -> Params {
@@ -70,8 +70,8 @@ fn load_params() -> Params {
     let split = params.value_of("split").unwrap_or("|BARCODE=");
     let cb_len = params.value_of("cb_len").unwrap_or("16");
     let cb_len = cb_len.to_string().parse::<usize>().unwrap() - 1;
-    let umi_len = params.value_of("umi_len").unwrap_or("10");
-    let umi_len = umi_len.to_string().parse::<usize>().unwrap() - 1;
+    // let umi_len = params.value_of("umi_len").unwrap_or("10");
+    // let umi_len = umi_len.to_string().parse::<usize>().unwrap() - 1;
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<usize>().unwrap();
     Params{
@@ -82,7 +82,7 @@ fn load_params() -> Params {
         joiner: joiner.to_string(),
         // include_header: true,
         cb_len: cb_len,
-        umi_len: umi_len,
+        // umi_len: umi_len,
     }
 }
 
