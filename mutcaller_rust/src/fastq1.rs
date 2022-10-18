@@ -5,7 +5,7 @@ real    0m1.219s
 echo $(zcat < tests/out1.fq.gz | wc -l)/4|bc
 
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz -o tests/out1.fq.gz
+time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz -o tests/out1.fq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz
 
 #compare to original mutcaller
 cd ~/develop/mutCaller
@@ -38,8 +38,7 @@ use std::{
     ffi::OsStr,
     fs::File,
     // io::{prelude::*, BufWriter, Write, BufReader, BufRead},
-    io::{BufWriter, Write, BufReader, BufRead},
-    io,
+    io::{self, BufWriter, Write, BufReader, BufRead},
     path::Path
 };
 
@@ -242,29 +241,37 @@ fn main() {
 
 
 fn fastq(params: &Params) {
-    // let reader_file = reader(&params.barcode);
     let mut cbvec = lines_from_file(&params.bcs);
     cbvec.sort_unstable();
-    // for line in lines {
-    //     println!("{}", line.to_string());
-    // }
+    let zip = true;
     let mut total_count: usize = 0;
     let mut nfound_count: usize = 0;
     let mut mmcb_count: usize = 0;
     let split_at = &params.umi_len + &params.cb_len;
-    // let split_at = 4usize;
     let sep: Vec::<u8> = params.name_sep.as_bytes().to_vec();
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
     let _counts = (0u64, 0u64);
-    // let mut writer = io::stdout();
     let path = Path::new(&params.ofastq);
     let file = match File::create(&path) {
         Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
         Ok(file) => file,
     };
-    let gzext = OsStr::new("gz");
-    let mut writer = BufWriter::new(write::GzEncoder::new(file, Compression::default()));
+    let mut writer = io::stdout();
+    // let mut writer = BufWriter::new(write::GzEncoder::new(file, Compression::default()));
+    // let gzext = OsStr::new("gz");
+    // let stdout;
+    // let filez;
+    // let mut writer = match path.extension(){
+    //     Some(gzext) => {
+    //         filez = BufWriter::new(write::GzEncoder::new(file, Compression::default()));
+    //         &filez as &Write
+    //     }
+    //     _ => {
+    //         stdout = io::stdout();
+    //         &stdout as &Write
+    //     }
+    // };
     // let mut writer_file = writer(&params.ofastq);
     parse_path(Some(fastq1), |parser1| {
         parse_path(Some(fastq2), |parser2| {
