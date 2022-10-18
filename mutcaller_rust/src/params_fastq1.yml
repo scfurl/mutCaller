@@ -21,6 +21,12 @@ args:
         takes_value: true
         required: false
         help: output fastq
+    - barcodes_file:
+        long: barcodes_file
+        short: bc
+        takes_value: true
+        required: false
+        help: barcodes_file
     - threads:
         long: threads
         short: t

@@ -1,15 +1,20 @@
 /*
 
 time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz | gzip > tests/out1.fq.gz
+real    0m1.219s
+echo $(zcat < tests/out1.fq.gz | wc -l)/4|bc
+
+
 time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz -o tests/out1.fq.gz
 
-
+#compare to original mutcaller
+cd ~/develop/mutCaller
+time ~/develop/mutCaller/mutcaller -u -U 10 -b ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R1.fastq.gz -t ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R2.fastq.gz -l ~/develop/mutCaller/data/737K-august-2016.txt.gz &&
+gzip tests/fastq_processed/sample_filtered.fastq
+# real  0m23.133s
 */
 
-/*
-### TO DO ###
-measure speed
-*/
+
 
 
 
@@ -17,47 +22,88 @@ measure speed
 extern crate simple_log;
 extern crate clap;
 extern crate fastq;
+extern crate flate2;
 // extern crate parasailors;
 
 use simple_log::LogConfigBuilder;
 use bytes::BytesMut;
+// use fastq::{parse_path, Record, RefRecord, OwnedRecord, each_zipped};
 use fastq::{parse_path, Record, RefRecord, each_zipped};
 use clap::{App, load_yaml};
 use flate2::write;
-use flate2::Compression;
-use std::error::Error;
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write};
-use std::path::Path;
+use flate2::read;
+use flate2::{Compression};
+use std::{
+    error::Error,
+    ffi::OsStr,
+    fs::File,
+    // io::{prelude::*, BufWriter, Write, BufReader, BufRead},
+    io::{BufWriter, Write, BufReader, BufRead},
+    io,
+    path::Path
+};
+
 
 // #[derive(Debug)]
 
-
-pub fn writer(filename: &str) -> Box<dyn Write> {
+fn lines_from_file(filename: &str) -> Vec<String> {
     let path = Path::new(filename);
-    let file = match File::create(&path) {
+    let file = match File::open(&path) {
         Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
         Ok(file) => file,
     };
-
-    if path.extension() == Some(OsStr::new("gz")) {
-        // Error is here: Created file isn't gzip-compressed
-        Box::new(BufWriter::with_capacity(
-            128 * 1024,
-            write::GzEncoder::new(file, Compression::default()),
-        ))
-    } else {
-        Box::new(BufWriter::with_capacity(128 * 1024, file))
+    if path.extension() == Some(OsStr::new("gz")){
+        let buf = BufReader::new(read::GzDecoder::new(file));
+        buf.lines()
+            .map(|l| l.expect("Could not parse line"))
+            .collect()
+    }else{
+        let buf = BufReader::new(file);
+        buf.lines()
+            .map(|l| l.expect("Could not parse line"))
+            .collect()
     }
 }
+
+
+// pub fn reader(filename: &str) -> Box<dyn BufRead> {
+//     let path = Path::new(filename);
+//     let file = match File::open(&path) {
+//         Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
+//         Ok(file) => file,
+//     };
+
+//     if path.extension() == Some(OsStr::new("gz")) {
+//         Box::new(BufReader::with_capacity(
+//             128 * 1024,
+//             read::GzDecoder::new(file),
+//         ))
+//     } else {
+//         Box::new(BufReader::with_capacity(128 * 1024, file))
+//     }
+// }
+
+// pub fn writer(filename: &str) -> BufWriter<W> {
+//     let path = Path::new(filename);
+//     let file = match File::create(&path) {
+//         Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
+//         Ok(file) => file,
+//     };
+
+//     if path.extension() == Some(OsStr::new("gz")) {
+//         // Error is here: Created file isn't gzip-compressed
+//         BufWriter::new(write::GzEncoder::new(file, Compression::default()))
+//     } else {
+//         BufWriter::new(file)
+//     }
+// }
 
 
 struct Params {
     fastq1: String,
     fastq2: String,
     ofastq: String,
+    bcs: String,
     umi_len: u8,
     cb_len: u8,
     threads: usize,
@@ -143,7 +189,8 @@ fn load_params() -> Params {
     // let debug = debug.to_string().parse::<bool>().unwrap();
     let fastq1 = params.value_of("fastq1").unwrap();
     let fastq2 = params.value_of("fastq2").unwrap();
-    let ofastq = params.value_of("outfastq").unwrap_or("out.fastq");
+    let ofastq = params.value_of("outfastq").unwrap_or("out.fastq.gz");
+    let bcs = params.value_of("barcodes_file").unwrap_or("/Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz");
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<u8>().unwrap();
     let umi_len = params.value_of("umi_len").unwrap_or("10");
@@ -163,6 +210,7 @@ fn load_params() -> Params {
         fastq1: fastq1.to_string(),
         fastq2: fastq2.to_string(),
         ofastq: ofastq.to_string(),
+        bcs: bcs.to_string(),
         threads: threads as usize,
         umi_len: umi_len as u8,
         cb_len: cb_len as u8,
@@ -194,15 +242,29 @@ fn main() {
 
 
 fn fastq(params: &Params) {
-    let mut total: usize = 0;
+    // let reader_file = reader(&params.barcode);
+    let mut cbvec = lines_from_file(&params.bcs);
+    cbvec.sort_unstable();
+    // for line in lines {
+    //     println!("{}", line.to_string());
+    // }
+    let mut total_count: usize = 0;
     let mut nfound_count: usize = 0;
+    let mut mmcb_count: usize = 0;
     let split_at = &params.umi_len + &params.cb_len;
     // let split_at = 4usize;
     let sep: Vec::<u8> = params.name_sep.as_bytes().to_vec();
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
     let _counts = (0u64, 0u64);
-    let mut writer = io::stdout();
+    // let mut writer = io::stdout();
+    let path = Path::new(&params.ofastq);
+    let file = match File::create(&path) {
+        Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
+        Ok(file) => file,
+    };
+    let gzext = OsStr::new("gz");
+    let mut writer = BufWriter::new(write::GzEncoder::new(file, Compression::default()));
     // let mut writer_file = writer(&params.ofastq);
     parse_path(Some(fastq1), |parser1| {
         parse_path(Some(fastq2), |parser2| {
@@ -212,18 +274,33 @@ fn fastq(params: &Params) {
                     let r2 = &rec2.unwrap();
                     if r1.seq().contains(&b"N"[0]) | r2.seq().contains(&b"N"[0]){
                         nfound_count += 1;
-                        total +=1;
+                        total_count +=1;
                     }else{
-                        total +=1;
-                        let barcode = RefRecord::to_owned_record(&r1);
-                        let (barcode, _seq) = &barcode.seq.split_at(split_at.into());
-                        let mut readout = RefRecord::to_owned_record(&r2);
-                        let mut new_header = BytesMut::from(readout.head()).to_vec();
-                        let _ = new_header.append(&mut sep.clone());
-                        let _ = new_header.append(&mut barcode.to_vec());
-                        readout.head = new_header;
-                        // let _ = readout.write(&mut writer(&params.ofastq));
-                        let _ = readout.write(&mut writer);
+                        total_count +=1;
+                        // let barcode = RefRecord::to_owned_record(&r1);
+                        let (barcode, _seq) = &r1.seq().split_at(split_at.into());
+                        // println!("{:?}", barcode);
+                        let (cb, _seq) = barcode.split_at(params.cb_len as usize);
+                        match cbvec.binary_search(&std::str::from_utf8(cb).unwrap().to_string()) {
+                            Ok(_u) => {
+                                let mut readout = RefRecord::to_owned_record(&r2);
+                                let mut new_header = BytesMut::from(readout.head()).to_vec();
+                                let _ = new_header.append(&mut sep.clone());
+                                let _ = new_header.append(&mut barcode.to_vec());
+                                readout.head = new_header;
+                                // let _ = readout.write(&mut writer(&params.ofastq));
+                                let _ = readout.write(&mut writer);
+                            }
+                            Err(_e) => {
+                                mmcb_count +=1;
+                            }
+                        }
+                        // let newhead = &mut sep.clone().append(&mut barcode.to_vec());
+                        // let newrecord = <OwnedRecord as Trait>::Record {
+                        //     seq: &r2.seq(),
+                        //     head: &newhead,
+                        //     qual: &r2.qual(),
+                        // };
                     }
                 }
                 (true, true)
@@ -233,7 +310,7 @@ fn fastq(params: &Params) {
         .expect("Unknown format for file 2.");
     })
     .expect("Unknown format for file 1.");
-    eprintln!("Total number of reads processed: {}, {} of these had Ns", total, nfound_count);
+    eprintln!("Total number of reads processed: {}, {} of these had Ns, {} of these had BC not in whitelist", total_count, nfound_count, mmcb_count);
 }
 
 // pub fn eval_reads(_rec1: &RefRecord, rec2: &RefRecord) -> bool{
