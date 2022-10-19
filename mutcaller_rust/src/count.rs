@@ -20,7 +20,7 @@ samtools view -hb -s 0.01 $OUT/kquant/pseudoalignments.bam > /home/sfurlan/devel
 
 ##run test
 
-~/develop/mutCaller/mutcaller_rust/target/release/count -t 1 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam | head
+~/develop/mutCaller/mutcaller_rust/target/release/count --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam | head
 time ~/develop/mutCaller/addTags.py -u 10 -c 16 /home/sfurlan/develop/mutCaller/data/bams/test.bam | samtools view -hbo kquant/Aligned.out.tagged.bam > test.bam
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam
 

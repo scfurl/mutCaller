@@ -1,6 +1,6 @@
 /*
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz | gzip > tests/out1.fq.gz
+time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --barcodes_file /Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz | gzip > tests/out1.fq.gz
 real    0m1.219s
 echo $(zcat < tests/out1.fq.gz | wc -l)/4|bc
 
@@ -11,6 +11,28 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 test
 cd ~/develop/mutCaller
 time ~/develop/mutCaller/mutcaller -u -U 10 -b ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R1.fastq.gz -t ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R2.fastq.gz -l ~/develop/mutCaller/data/737K-august-2016.txt.gz &&
 gzip tests/fastq_processed/sample_filtered.fastq
+
+
+
+## full run of pipeline on testdata
+ml R/4.1.1-foss-2020b
+ml SAMtools
+export transcriptome=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A
+cd ~/develop/mutCaller/mutcaller_rust/tests
+time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+/app/software/CellRanger/7.0.1/lib/bin/STAR --genomeDir /fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/star --readFilesIn <(gunzip -c out1.fq.gz) \
+  --runThreadN 1 --outSAMunmapped Within KeepPairs --outSAMtype BAM SortedByCoordinate
+Rscript ~/develop/mutCaller/scripts/quantReads.R
+time ~/develop/mutCaller/mutcaller_rust/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
+
+
+
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam
+
+~/develop/mutCaller/addTags.py -u 10 -c 16 Aligned.sortedByCoord.out.bam | samtools view -hbo Aligned.out.tagged.sorted.bam &&
+samtools index -@ 36 Aligned.out.tagged.sorted.bam
+
+
 # real  0m23.133s
 */
 
@@ -239,6 +261,13 @@ fn main() {
 }
 
 
+fn remove_whitespace(s: &mut String) {
+    s.retain(|c| !c.is_whitespace());
+}
+
+fn remove_whitespace_str(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
+}
 
 fn fastq(params: &Params) {
     let mut cbvec = lines_from_file(&params.bcs);
@@ -248,7 +277,8 @@ fn fastq(params: &Params) {
     let mut nfound_count: usize = 0;
     let mut mmcb_count: usize = 0;
     let split_at = &params.umi_len + &params.cb_len;
-    let sep: Vec::<u8> = params.name_sep.as_bytes().to_vec();
+    // let sep: Vec::<u8> = params.name_sep.as_bytes().to_vec();
+
     let fastq1 = &params.fastq1;
     let fastq2 = &params.fastq2;
     let _counts = (0u64, 0u64);
@@ -291,10 +321,16 @@ fn fastq(params: &Params) {
                         match cbvec.binary_search(&std::str::from_utf8(cb).unwrap().to_string()) {
                             Ok(_u) => {
                                 let mut readout = RefRecord::to_owned_record(&r2);
-                                let mut new_header = BytesMut::from(readout.head()).to_vec();
-                                let _ = new_header.append(&mut sep.clone());
-                                let _ = new_header.append(&mut barcode.to_vec());
-                                readout.head = new_header;
+                                // let mut new_header = BytesMut::from(readout.head()).to_vec();
+                                let some_x = vec![b" "];
+                                // let mut headstr = &readout.head().to_string();
+                                let mut new_header = std::str::from_utf8(&readout.head()).unwrap().to_string();
+                                remove_whitespace(&mut new_header);
+                                // &new_header.retain(|&x| x != some_x);
+                                // let _ = new_header.append(&mut sep.clone());
+                                let _ = new_header.push_str(&params.name_sep);
+                                let _ = new_header.push_str(&std::str::from_utf8(&barcode).unwrap().to_string());
+                                readout.head = new_header.as_bytes().to_vec();
                                 // let _ = readout.write(&mut writer(&params.ofastq));
                                 let _ = readout.write(&mut writer);
                             }
