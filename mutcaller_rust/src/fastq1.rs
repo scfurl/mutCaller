@@ -1,11 +1,8 @@
 /*
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --barcodes_file /Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz | gzip > tests/out1.fq.gz
+time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --barcodes_file /Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz | gzip > out1.fq.gz
 real    0m1.219s
 echo $(zcat < tests/out1.fq.gz | wc -l)/4|bc
-
-
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 tests/sequencer_R1.fastq.gz --fastq2 tests/sequencer_R2.fastq.gz -o tests/out1.fq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz
 
 #compare to original mutcaller
 cd ~/develop/mutCaller
@@ -20,18 +17,14 @@ ml SAMtools
 export transcriptome=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A
 cd ~/develop/mutCaller/mutcaller_rust/tests
 time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+zcat out1.fq.gz | head
 /app/software/CellRanger/7.0.1/lib/bin/STAR --genomeDir /fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/star --readFilesIn <(gunzip -c out1.fq.gz) \
   --runThreadN 1 --outSAMunmapped Within KeepPairs --outSAMtype BAM SortedByCoordinate
+samtools view Aligned.sortedByCoord.out.bam | head
 Rscript ~/develop/mutCaller/scripts/quantReads.R
 time ~/develop/mutCaller/mutcaller_rust/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
 
-
-
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam
-
-~/develop/mutCaller/addTags.py -u 10 -c 16 Aligned.sortedByCoord.out.bam | samtools view -hbo Aligned.out.tagged.sorted.bam &&
-samtools index -@ 36 Aligned.out.tagged.sorted.bam
-
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam
 
 # real  0m23.133s
 */

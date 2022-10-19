@@ -1,23 +1,7 @@
 /**
 
-chmod 777 /Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/mutcaller_rust
-cd /Users/sfurlan/develop/mutCaller/mutcaller_rust
-cargo build
-/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/mutcaller_rust -t 18 --ibam "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/Aligned.out.tagged.sorted_0.05.bam"
-
-#cluster
-cd /home/sfurlan/develop/mutCaller/mutcaller_rust
-cargo build
-/home/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/mutcaller_rust --joiner="_" --no_header --ibam=$OUT/kquant/pseudoalignments.bam | head -n 1000000
-
-###test dataset.
-##make test
-samtools view -hb -s 0.01 $OUT/kquant/pseudoalignments.bam > /home/sfurlan/develop/mutCaller/data/bams/test.bam
-
-##run test
-
-time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -t 1 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam --obam=test.bam
-time ~/develop/mutCaller/addTags.py -u 10 -c 16 /home/sfurlan/develop/mutCaller/data/bams/test.bam | samtools view -hbo kquant/Aligned.out.tagged.bam > test.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
+time ~/develop/mutCaller/addTags.py -u 10 -c 16 Aligned.sortedByCoord.out.bam | samtools view -hbo kquant/Aligned.out.tagged.bam > Aligned.sortedByCoord.out.tagged.bam
 
 
 **/

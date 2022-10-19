@@ -1,29 +1,7 @@
 /**
 
-chmod 777 /Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/mutcaller_rust
-cd /Users/sfurlan/develop/mutCaller/mutcaller_rust
-cargo build
-/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/mutcaller_rust -t 18 --ibam "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/Aligned.out.tagged.sorted_0.05.bam"
-
-#cluster
-cd /home/sfurlan/develop/mutCaller/mutcaller_rust
-cargo build
-~/develop/mutCaller/mutcaller_rust/target/debug/count --ibam=$OUT/kquant/pseudoalignments.bam | head
-
-###test dataset.
-##make test
-samtools view -hb -s 0.01 $OUT/kquant/pseudoalignments.bam > /home/sfurlan/develop/mutCaller/data/bams/test.bam
-
-###test dataset.
-##make test
-samtools view -hb -s 0.01 $OUT/kquant/pseudoalignments.bam > /home/sfurlan/develop/mutCaller/data/bams/test.bam
-
-##run test
-
-~/develop/mutCaller/mutcaller_rust/target/release/count --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam | head
-time ~/develop/mutCaller/addTags.py -u 10 -c 16 /home/sfurlan/develop/mutCaller/data/bams/test.bam | samtools view -hbo kquant/Aligned.out.tagged.bam > test.bam
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=/home/sfurlan/develop/mutCaller/data/bams/test.bam
-
+cd ~/develop/mutCaller/mutcaller_rust/tests
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam
 **/
 
 extern crate clap;
@@ -56,6 +34,7 @@ fn load_params() -> Params {
     let yaml = load_yaml!("params.yml");
     let params = App::from_yaml(yaml).get_matches();
     let ibam = params.value_of("input_bam").unwrap();
+    let aligner = params.value_of("aligner").unwrap();
     eprintln!("opening: {}", ibam.to_string());
     let joiner = params.value_of("joiner").unwrap_or(":");
     let split = params.value_of("split").unwrap_or("|BARCODE=");
