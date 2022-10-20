@@ -55,7 +55,6 @@ fn load_params() -> Params {
         split: split.to_string(),
         joiner: joiner.to_string(),
         cb_len: cb_len,
-        // umi_len: umi_len,
         read_len: read_len,
     }
 }
