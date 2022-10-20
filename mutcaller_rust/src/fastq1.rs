@@ -159,7 +159,7 @@ fn remove_whitespace_str(s: &str) -> String {
 fn fastq(params: &Params) {
     let mut cbvec = lines_from_file(&params.bcs);
     cbvec.sort_unstable();
-    let zip = true;
+    let _zip = true;
     let mut total_count: usize = 0;
     let mut nfound_count: usize = 0;
     let mut mmcb_count: usize = 0;
@@ -170,7 +170,7 @@ fn fastq(params: &Params) {
     let fastq2 = &params.fastq2;
     let _counts = (0u64, 0u64);
     let path = Path::new(&params.ofastq);
-    let file = match File::create(&path) {
+    let _file = match File::create(&path) {
         Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
         Ok(file) => file,
     };
@@ -191,7 +191,7 @@ fn fastq(params: &Params) {
                         match cbvec.binary_search(&std::str::from_utf8(cb).unwrap().to_string()) {
                             Ok(_u) => {
                                 let mut readout = RefRecord::to_owned_record(&r2);
-                                let some_x = vec![b" "];
+                                let _some_x = vec![b" "];
                                 let mut new_header = std::str::from_utf8(&readout.head()).unwrap().to_string();
                                 remove_whitespace(&mut new_header);
                                 let _ = new_header.push_str(&params.name_sep);
