@@ -1,7 +1,11 @@
 /**
 
 cd ~/develop/mutCaller/mutcaller_rust/tests
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
+
+
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
+
 **/
 
 extern crate clap;
@@ -22,6 +26,7 @@ use std::str;
 
 struct Params {
     ibam: String,
+    aligner: String,
     split: String,
     joiner: String,
     threads: usize,
@@ -34,7 +39,7 @@ fn load_params() -> Params {
     let yaml = load_yaml!("params.yml");
     let params = App::from_yaml(yaml).get_matches();
     let ibam = params.value_of("input_bam").unwrap();
-    let aligner = params.value_of("aligner").unwrap();
+    let aligner = params.value_of("aligner").unwrap_or("STAR");
     eprintln!("opening: {}", ibam.to_string());
     let joiner = params.value_of("joiner").unwrap_or(":");
     let split = params.value_of("split").unwrap_or("|BARCODE=");
@@ -48,6 +53,7 @@ fn load_params() -> Params {
     let threads = threads.to_string().parse::<usize>().unwrap() - 1;
     Params{
         ibam: ibam.to_string(),
+        aligner: aligner.to_string(),
         threads: threads,
         split: split.to_string(),
         joiner: joiner.to_string(),
@@ -59,11 +65,18 @@ fn load_params() -> Params {
 
 fn main() {
     let params = load_params();
-    count(&params);
+    if params.aligner == "kallisto"{
+        count_kallisto(&params);
+        return;
+    }
+    if params.aligner == "STAR"{
+        count_STAR(&params);
+    }
+    
 }
 
 
-fn count(params: &Params) {
+fn count_STAR(params: &Params) {
     let mut total: usize = 0;
     let mut goodreadcount: usize = 0;
     let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{
@@ -77,14 +90,8 @@ fn count(params: &Params) {
     let data = header.reference_names();
     let mut seqnames = Vec::new();
     for seq in data {
-        // write!(f, "{}\n", seq).expect("unable to write");
         seqnames.push(seq)
     }
-    // let array: [T; N]  = data.[into_]iter()
-    //     .collect::<Vec<T>>()
-    //     .try_into()
-    //     .unwrap()
-    // let mut oldseqname = "None";
     for record in reader {
         total += 1;
         let newrecord = record.unwrap();
@@ -92,9 +99,6 @@ fn count(params: &Params) {
             Ok(v) => v,
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
-        // if &seqname == &oldseqname {
-        //     continue;
-        // }
         let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
         let _modified_name = seqname.replace(&params.split, &params.joiner);
         let (cb_umi_s1, cb_umi_s2) = cbumi.split_at(params.cb_len+1);
@@ -107,22 +111,57 @@ fn count(params: &Params) {
         if newrecord.mapq() < 255 as u8 {
             good_read = false
         }
-        if good_read{
+        if good_read && ((newrecord.flag().to_string()=="Flag(16)") | (newrecord.flag().to_string()=="Flag(0)")){
             goodreadcount += 1;
-            // oldseqname = seqname;
-            println!("{}\t{}\t{}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string());
-            // println!("{}\t{}\t{}\t{}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string(), newrecord.start().to_string());
-            // println!("{}\t{}\t{}\t1", cb_umi_s1, cb_umi_s2, newrecord.ref_id().to_string());
-            // println!("{}\t{}\t{}\t1\t(CIGAR: {})", cb_umi_s1, cb_umi_s2, newrecord.ref_id().to_string(), cigar);
+            println!("{} {} {} {}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string(), newrecord.start());
         }
-        // let total_str =  &total.to_string().chars();
-        // if total_str.count() > 7 as usize{
-        //     let str_temp = total_str.rev().take(6).to_string();
-        //     if str_temp == "000000" {
-        //         eprintln!("Processed {} total reads so far", &total);
-        //     }
-        // }
     }
     eprintln!("Completed; {} total reads processed!", &total);
     eprintln!("{} good reads counted!", &goodreadcount);
+}
+
+
+
+fn count_kallisto(params: &Params) {
+    let mut total: usize = 0;
+    let mut goodreadcount: usize = 0;
+    let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{
+        (((*&params.threads/2) -1) as u16, ((*&params.threads/2) -1) as u16)
+    } else {
+        (0 as u16, 0 as u16)
+    };
+    let reader = bam::BamReader::from_path(params.ibam.to_string(), 0).unwrap();
+    let _output = io::BufWriter::new(io::stdout());
+    let header = reader.header().clone();
+    let data = header.reference_names();
+    let mut seqnames = Vec::new();
+    for seq in data {
+        seqnames.push(seq)
+    }
+    for record in reader {
+        total += 1;
+        let newrecord = record.unwrap();
+        let seqname = match str::from_utf8(&newrecord.name()) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        };
+        let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
+        let _modified_name = seqname.replace(&params.split, &params.joiner);
+        let (cb_umi_s1, cb_umi_s2) = cbumi.split_at(params.cb_len+1);
+        let mut good_read = false;
+        let cigarmatch = format!("{}M", *&params.read_len);
+        let cigar = newrecord.cigar().to_string();
+        if cigar == cigarmatch{
+            good_read = true
+        }
+        if newrecord.mapq() < 255 as u8 {
+            good_read = false
+        }
+        if good_read && ((newrecord.flag().to_string()=="Flag(16)") | (newrecord.flag().to_string()=="Flag(0)")){
+            goodreadcount += 1;
+            println!("{} {} {}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string());
+        }
+    }
+    eprintln!("Completed; {} total alignments processed!", &total);
+    eprintln!("{} good alignments counted!", &goodreadcount);
 }

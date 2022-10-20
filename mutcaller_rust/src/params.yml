@@ -14,7 +14,7 @@ args:
         short: a
         takes_value: true
         required: false
-        help: aligner software - currently kallisto and star are supported
+        help: aligner software - currently kallisto and STAR are supported
     - threads:
         long: threads
         short: t

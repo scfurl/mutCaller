@@ -11,7 +11,7 @@ gzip tests/fastq_processed/sample_filtered.fastq
 
 
 
-## full run of pipeline on testdata
+## full run of pipeline on testdata STAR
 ml R/4.1.1-foss-2020b
 ml SAMtools
 export transcriptome=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A
@@ -22,11 +22,22 @@ zcat out1.fq.gz | head
   --runThreadN 1 --outSAMunmapped Within KeepPairs --outSAMtype BAM SortedByCoordinate
 samtools view Aligned.sortedByCoord.out.bam | head
 Rscript ~/develop/mutCaller/scripts/quantReads.R
-time ~/develop/mutCaller/mutcaller_rust/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
-
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -j _ --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
+samtools view Aligned.sortedByCoord.out.tagged.bam | head
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -s _ -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
+sort -n -k3 -k2 -k1 counts_s.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_s.txt
 
 # real  0m23.133s
+
+## full run of pipeline on testdata kallisto
+ml kallisto/0.48.0-foss-2020b
+export kallisto_index=/fh/scratch/delete90/furlan_s/targ_reseq/220819/kallisto_hg38_MYBindel
+kallisto quant -i $kallisto_index -o kquant -l 400 -s 50 -t 18 --single --pseudobam out1.fq.gz
+samtools view kquant/pseudoalignments.bam | head -n 1000
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
+sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
+gzip counts.sorted.txt
+
 */
 
 
