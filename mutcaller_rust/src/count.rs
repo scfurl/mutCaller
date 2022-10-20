@@ -12,11 +12,8 @@ extern crate clap;
 extern crate bam;
 
 use std::io;
-// use std::io::{self, Write};
-// use bam::RecordWriter;
 use clap::{App, load_yaml};
 use std::str;
-// use bam::header::{Header, HeaderEntry};
 
 
 
@@ -70,13 +67,13 @@ fn main() {
         return;
     }
     if params.aligner == "STAR"{
-        count_STAR(&params);
+        count_star(&params);
     }
     
 }
 
 
-fn count_STAR(params: &Params) {
+fn count_star(params: &Params) {
     let mut total: usize = 0;
     let mut goodreadcount: usize = 0;
     let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{

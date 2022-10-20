@@ -55,7 +55,7 @@ use fastq::{parse_path, Record, RefRecord, each_zipped};
 use clap::{App, load_yaml};
 use flate2::{read};
 use std::{
-    error::Error,
+    // error::Error,
     ffi::OsStr,
     fs::File,
     io::{self, BufReader, BufRead},
@@ -68,7 +68,7 @@ use std::{
 fn lines_from_file(filename: &str) -> Vec<String> {
     let path = Path::new(filename);
     let file = match File::open(&path) {
-        Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
+        Err(_why) => panic!("couldn't open {}", path.display()),
         Ok(file) => file,
     };
     if path.extension() == Some(OsStr::new("gz")){
@@ -152,9 +152,9 @@ fn remove_whitespace(s: &mut String) {
     s.retain(|c| !c.is_whitespace());
 }
 
-fn remove_whitespace_str(s: &str) -> String {
-    s.chars().filter(|c| !c.is_whitespace()).collect()
-}
+// fn remove_whitespace_str(s: &str) -> String {
+//     s.chars().filter(|c| !c.is_whitespace()).collect()
+// }
 
 fn fastq(params: &Params) {
     let mut cbvec = lines_from_file(&params.bcs);
@@ -171,7 +171,7 @@ fn fastq(params: &Params) {
     let _counts = (0u64, 0u64);
     let path = Path::new(&params.ofastq);
     let _file = match File::create(&path) {
-        Err(why) => panic!("couldn't open {}: {}", path.display(), why.description()),
+        Err(_why) => panic!("couldn't open {}", path.display()),
         Ok(file) => file,
     };
     let mut writer = io::stdout();
