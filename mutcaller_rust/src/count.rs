@@ -1,17 +1,15 @@
 /**
 
 cd ~/develop/mutCaller/mutcaller_rust/tests
+#kallisto
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
 
-
+#star
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 
+#mm2
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.bam
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
-
-
-##varianst
-~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam
 **/
 
 extern crate clap;
@@ -20,7 +18,6 @@ extern crate bam;
 use std::io;
 use clap::{App, load_yaml};
 use std::str;
-use crate::bam::RecordWriter;
 
 
 
@@ -72,7 +69,8 @@ fn load_params() -> Params {
 fn main() {
     let params = load_params();
     if params.variants=="6,135195908,135195908" {
-        count_variants(&params)
+        count_variants(&params);
+        return;
     }
     if params.aligner == "kallisto"{
         count_kallisto(&params);
@@ -84,6 +82,7 @@ fn main() {
     }
     
 }
+
 
 
 fn count_star(params: &Params) {
@@ -176,10 +175,13 @@ fn count_kallisto(params: &Params) {
     eprintln!("{} good alignments counted!", &goodreadcount);
 }
 
-fn process_variant(params: &Params)->bam::Region{
-    let region = bam::Region::new(6,135195908,135195908);
+fn process_variant(params: &Params, ref_id: u32)->bam::Region{
+    let region = bam::Region::new(ref_id,135195908,135195908);
+    // let region = bam::Region::new(5,1351959,1351959);
     return region;
 }
+
+
 
 // fn count_variants(params: &Params, bar: bar, mapq: maq_Q, baseq: baseq){
 fn count_variants(params: &Params){
@@ -194,19 +196,131 @@ fn count_variants(params: &Params){
     //         // """
     // let barcodes = defaultdict(list);
     // 
-    let mut reader = bam::IndexedReader::from_path(&params.ibam).unwrap();
+    // let (read_threads, write_threads) = if (*&params.threads as i8) > 2{
+    //     (((*&params.threads/2) -1) as u16, ((*&params.threads/2) -1) as u16)
+    // } else {
+    //     (0 as u16, 0 as u16)
+    // };
+    let mut reader = bam::IndexedReader::build()
+        .additional_threads(*&params.threads as u16)
+        .from_path(&params.ibam).unwrap();
+    // let mut reader = bam::IndexedReader::from_path(&params.ibam).unwrap();
+    // let mut reader = bam::IndexedReader::from_path(&params.ibam).unwrap();
     let output = io::BufWriter::new(io::stdout());
+    let header = reader.header().clone();
+    let data = header.reference_names();
+    let mut seqnames = Vec::new();
+    for seq in data {
+        seqnames.push(seq)
+    }
+    let ref_id = seqnames.iter().position(|&r| r == "chr6").unwrap();
     let mut writer = bam::SamWriter::build()
         .write_header(false)
         .from_stream(output, reader.header().clone()).unwrap();
     // let (bar, mapQ, baseq) = 0usize;
-    let region = process_variant(&params);
-    for record in reader.fetch(&region).unwrap() {
-        let record = record.unwrap();
-        writer.write(&record).unwrap();
-    }
 
-}
+    let filter = |record: &bam::Record| -> bool {
+        record
+            .mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))
+    };
+    let region = process_variant(&params, ref_id as u32);
+    // let mut reads = reader.fetch_by(&region, filter);
+    // let pileups = bam::Pileup::new(&mut reads);
+
+    // // let mut read_depths = vec![0usize; n_bins];
+    // for pileup in pileups {
+    //     let ref_pos = pileup.ref_pos();
+    // }
+
+    // let region = process_variant(&params, ref_id as u32);
+    for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
+        // writer.write(&record.unwrap()).unwrap();
+        let copiedrec = record.unwrap();
+        let seq = copiedrec.sequence();
+        let seqindex = 135195908 - copiedrec.start();
+        // let nt = seq[seqindex];
+        for entry in copiedrec.alignment_entries().unwrap() {
+            if let Some((record_pos, record_nt)) = entry.record_pos_nt() {
+                print!("{} {}", record_pos, record_nt as char);
+            } else {
+                print!("-");
+            }
+            print!(", ");
+            if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
+                println!("{} {}", ref_pos, ref_nt as char);
+            } else {
+                println!("-");
+            }
+        }
+
+        // println!("Start {}; AQS {}; SI {}; Cigar {}", copiedrec.start(), copiedrec.aligned_query_start(), seqindex, copiedrec.cigar().to_string());
+    }
+    // for record in reader.fetch(&region).unwrap() {
+    //     writer.write(&record.unwrap()).unwrap();
+    // }
+    // for entry in pileup.entries() {
+    //     // AlnType doesn't implement Hash, so we have our own Feature enum
+    //     let aln = match entry.aln_type() {
+    //         AlnType::Deletion => Feature::Deletion,
+    //         AlnType::Match => Feature::Match,
+    //         AlnType::Insertion(_) => Feature::Insertion,
+    //     };
+
+    //     let record = entry.record();
+    //     if record.flag().is_supplementary() || record.tags().get(b"SA").is_some() {
+    //         let name = std::str::from_utf8(record.name())?.to_owned();
+    //         detailed_coverage
+    //             .entry(match has_breakpoint_partner(record) {
+    //                 true => Feature::SplitReadAtBreakpoints,
+    //                 false => {
+    //                     if inside.contains(&name) {
+    //                         Feature::SplitReadIn
+    //                     } else {
+    //                         Feature::SplitReadOut
+    //                     }
+    //                 }
+    //             })
+    //             .or_insert_with(|| vec![0usize; n_bins])[idx] += 1;
+    //     } else {
+    //         detailed_coverage
+    //             .entry(aln)
+    //             .or_insert_with(|| vec![0usize; n_bins])[idx] += 1;
+    //     }
+    // }
+    // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(12)) {
+    //     let column = column.unwrap();
+    //     println!("Column at {}:{}, {} records", column.ref_id(),
+    //         column.ref_pos() + 1, column.entries().len());
+
+    //     for entry in column.entries().iter() {
+    //         let seq: Vec<_> = entry.sequence().unwrap()
+    //             .map(|nt| nt as char).collect();
+    //         let qual: Vec<_> = entry.qualities().unwrap().iter()
+    //             .map(|q| (q + 33) as char).collect();
+    //         println!("    {:?}: {:?}, {:?}", entry.record(), seq, qual);
+    //     }
+    // }
+    // let mut count_r = 0; 
+
+    // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(0)) {
+    //     let column = column.unwrap();
+    //             // println!("Column at {}:{}, {} records", column.ref_id(),
+    //     //     column.ref_pos() + 1, column.entries().len());
+
+    //     for entry in column.entries().iter() {
+    //         count_r +=1;
+    //         // let seq: Vec<_> = entry.sequence().unwrap()
+    //         //     .map(|nt| nt as char).collect();
+    //         // let qual: Vec<_> = entry.qualities().unwrap().iter()
+    //         //     .map(|q| (q + 33) as char).collect();
+    //         // println!("    {:?}: {:?}, {:?}", entry.record(), seq, qual);
+    //     }
+    // }
+    // println!("Count: {}", &count_r)
+    // for record in reader.fetch(&region).unwrap() {
+    //     let record = record.unwrap();
+    //     writer.write(&record).unwrap();
+    // }
     // // let barUcodes = defaultdict(list);
     // // let bar_count = [("ref", vec![]), ("alt", vec![])].iter().cloned().collect::<HashMap<_,_>>();
     // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(1796)) 
@@ -285,5 +399,4 @@ fn count_variants(params: &Params){
     //         }
     //     }
     //     return (barUcodes, bar_count);
-
-
+}

@@ -13,6 +13,20 @@ head test.fastq
 
 /Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz"
 
+
+cd ~/develop/mutCaller/mutcaller_rust
+/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz" > test.fastq
+cat fastq.log
+tail test.fastq
+head test.fastq
+
+/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq -t 8 --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz" > test.fastq
+cat fastq.log
+tail test.fastq
+head test.fastq
+
+/Users/sfurlan/develop/mutCaller/mutcaller_rust/target/debug/fastq --ifastq "/Users/sfurlan/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/experiments/patient_marrows/LKmut/sample_filtered.fastq_1M.fastq.gz"
+
 */
 
 /*

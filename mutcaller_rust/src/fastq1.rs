@@ -38,6 +38,20 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant
 sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
 gzip counts.sorted_k.txt
 
+## full run of pipeline on testdata using mm2
+ml minimap2/2.24-GCCcore-11.2.0
+cd ~/develop/mutCaller/mutcaller_rust/tests
+mkdir mm2
+export fa=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/fasta/genome.fa
+time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+zcat out1.fq.gz | head
+minimap2 -a $fa --MD out1.fq.gz | samtools view -b -o mm2/Aligned.out.bam
+samtools sort -o mm2/Aligned.out.sorted.bam mm2/Aligned.out.bam
+samtools index mm2/Aligned.out.sorted.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
+sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
+gzip counts.sorted_k.txt
+
 */
 
 
