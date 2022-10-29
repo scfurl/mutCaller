@@ -283,11 +283,11 @@ fn count_variants_mm2(params: &Params, variant: Variant){
     let region = process_variant(ref_id as u32, start);
     for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
         total+=1;
-        let seqname = match str::from_utf8(record.as_ref().unwrap().name()) {
+        let readheader = match str::from_utf8(record.as_ref().unwrap().name()) {
             Ok(v) => v,
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
-        let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
+        let cbumi= readheader.split(&params.split).nth(1).unwrap().to_string();
         // eprintln!("{:?}", cbumi);
         let (cb, umi) = cbumi.split_at(params.cb_len+1);
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
@@ -309,7 +309,7 @@ fn count_variants_mm2(params: &Params, variant: Variant){
                         } else {
                             result = "other";
                         }
-                            println!("{} {} {} {} {} {}",&cb, &umi, seqname, ref_pos, vname, result);
+                            println!("{} {} {} {} {} {}",cb, umi, seqname, ref_pos, vname, result);
                         }
                     } else {
                         continue

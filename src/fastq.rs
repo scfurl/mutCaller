@@ -40,17 +40,17 @@ gzip counts.sorted_k.txt
 
 ## full run of pipeline on testdata using mm2
 ml minimap2/2.24-GCCcore-11.2.0
+ml SAMtools/1.16.1-GCC-11.2.0
 cd ~/develop/mutCaller/tests
 mkdir mm2
 export fa=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/fasta/genome.fa
-time ~/develop/mutCaller/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+time ~/develop/mutCaller/target/release/fastq -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
 zcat out1.fq.gz | head
 minimap2 -a $fa --MD out1.fq.gz | samtools view -b -o mm2/Aligned.out.bam
 samtools sort -o mm2/Aligned.out.sorted.bam mm2/Aligned.out.bam
-time ~/develop/mutCaller/target/release/addtag -j _ --ibam mm2/Aligned.out.sorted.bam --obam mm2/Aligned.out.sorted.tagged.bam
-samtools view mm2/Aligned.out.sorted.tagged.bam | head
-samtools index mm2/Aligned.out.sorted.tagged.bam
-time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts_mm.txt
+samtools view mm2/Aligned.out.sorted.bam | head
+samtools index mm2/Aligned.out.sorted.bam
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.bam -v variants.tsv > counts_mm.txt
 sort -n -k4 -k3 -k2 -k1 counts_mm.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_mm.txt
 gzip counts.sorted_k.txt
 
