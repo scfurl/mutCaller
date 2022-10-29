@@ -197,9 +197,6 @@ fn count_star(params: &Params) {
         if cigar == cigarmatch{
             good_read = true
         }
-        if newrecord.mapq() < 255 as u8 {
-            good_read = false
-        }
         if good_read && ((newrecord.flag().to_string()=="Flag(16)") | (newrecord.flag().to_string()=="Flag(0)")){
             goodreadcount += 1;
             println!("{} {} {} {}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string(), newrecord.start());
@@ -244,9 +241,6 @@ fn count_kallisto(params: &Params) {
         if cigar == cigarmatch{
             good_read = true
         }
-        if newrecord.mapq() < 255 as u8 {
-            good_read = false
-        }
         if good_read && ((newrecord.flag().to_string()=="Flag(16)") | (newrecord.flag().to_string()=="Flag(0)")){
             goodreadcount += 1;
             println!("{} {} {}", cb_umi_s1, cb_umi_s2, seqnames[newrecord.ref_id() as usize].to_string());
@@ -282,7 +276,7 @@ fn count_variants_mm2(params: &Params, variant: Variant){
     }
     let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
     let region = process_variant(ref_id as u32, start);
-    for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
+    for record in reader.fetch_by(&&region, |record| record.mapq() >= 4 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(16 as u16))).unwrap(){
         total+=1;
         let readheader = match str::from_utf8(record.as_ref().unwrap().name()) {
             Ok(v) => v,
@@ -344,7 +338,7 @@ fn count_variants_mm(params: &Params, variant: Variant){
     }
     let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
     let region = process_variant(ref_id as u32, start);
-    for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
+    for record in reader.fetch_by(&&region, |record| record.mapq() > 4 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(16 as u16))).unwrap(){
         total+=1;
         match record.as_ref().unwrap().tags().get(b"CB") {
             Some( bam::record::tags::TagValue::String(cba, _)) => {
