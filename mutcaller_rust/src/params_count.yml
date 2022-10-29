@@ -44,14 +44,23 @@ args:
         short: c
         takes_value: true
         required: false
-        help: cell barcode length
+        help: cell barcode length (default 16)
     - umi_len:
         long: umi_len
         short: u
         takes_value: true
         required: false
+        help: umi length (default 10)
     - read_len:
         long: read_len
         short: r
         takes_value: true
         required: false
+        help: read 2 length (default 90)
+    - method:
+        long: method
+        short: m
+        takes_value: true
+        required: false
+        help: method of identifying cell barcode and umi.  Either 'tags' which means CB and UMI are embedded in BAM tags, or 'header' meaning they are in the read name (header separated by string split - see above)
+

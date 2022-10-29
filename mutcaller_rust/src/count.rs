@@ -8,7 +8,8 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 
 #mm2
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts.tsv
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m tags > counts.tsv
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m header -s _ > counts.tsv
 
 cat > variants.csv << EOL
 seq,start,ref_nt,query_nt,name
@@ -72,6 +73,7 @@ struct Params {
     threads: usize,
     cb_len: usize, 
     read_len: usize,
+    method: String,
 }
 
 
@@ -111,7 +113,7 @@ fn load_params() -> Params {
     let params = App::from_yaml(yaml).get_matches();
     let ibam = params.value_of("input_bam").unwrap();
     let aligner = params.value_of("aligner").unwrap_or("mm2");
-    let variantstring = params.value_of("variants").unwrap_or("6:135195908,135195908");
+    let variantstring = params.value_of("variants").unwrap();
     let joiner = params.value_of("joiner").unwrap_or(":");
     let split = params.value_of("split").unwrap_or("|BARCODE=");
     let cb_len = params.value_of("cb_len").unwrap_or("16");
@@ -120,6 +122,7 @@ fn load_params() -> Params {
     let read_len = read_len.to_string().parse::<usize>().unwrap();
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<usize>().unwrap() - 1;
+    let method = params.value_of("method").unwrap_or("header");
     Params{
         ibam: ibam.to_string(),
         aligner: aligner.to_string(),
@@ -129,17 +132,24 @@ fn load_params() -> Params {
         joiner: joiner.to_string(),
         cb_len: cb_len,
         read_len: read_len,
+        method: method.to_string(),
     }
 }
 
 fn main() {
     let params = load_params();
+    eprintln!("{}", &params.method.to_string());
     if params.aligner == "mm2" {
         let csvdata = read_csv(&params).unwrap();
         for variant in csvdata {
             eprintln!("Processing variant: {}", variant);
             eprintln!("opening bam: {}", &params.ibam.to_string());
-            count_variants_mm(&params, variant);
+            if params.method.to_string() == "tags"{
+                count_variants_mm(&params, variant);
+            } else {
+                count_variants_mm2(&params, variant);
+            }
+            
         }
         return;
     }
@@ -252,7 +262,67 @@ fn process_variant(ref_id: u32, start: u32)->bam::Region{
 }
 
 
+fn count_variants_mm2(params: &Params, variant: Variant){
+    eprintln!("Processing using cb and umi in header");
+    let mut total: usize = 0;
+    let seqname = variant.seq;
+    let start = variant.start.parse::<u32>().unwrap();
+    let vname = variant.name;
+    let mut reader = bam::IndexedReader::build()
+        .additional_threads(*&params.threads as u16)
+        .from_path(&params.ibam).unwrap();
+    let mut seqnames = Vec::new();
+    let mut result = "null";
+    let query_nt = variant.query_nt as char;
+    let header = reader.header().clone();
+    let data = header.reference_names();
+    for seq in data {
+        seqnames.push(seq)
+    }
+    let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
+    let region = process_variant(ref_id as u32, start);
+    for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
+        total+=1;
+        let seqname = match str::from_utf8(record.as_ref().unwrap().name()) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        };
+        let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
+        let (cb, umi) = cbumi.split_at(params.cb_len+1);
+        for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
+            if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
+                if region.start() == ref_pos {
+                    // if entry.is_insertion() || entry.is_insertion(){
+                    //     println!("{}", "Indel");
+                    // }
+                    if let Some((_record_pos, record_nt)) = entry.record_pos_nt() {
+                        // let result = match record_nt as char {
+                        //     ref_nt as char => "ref",
+                        //     query_nt as char => "query",
+                        //     _ => "other",
+                        // };
+                        if ref_nt as char == record_nt as char {
+                            result = "ref";
+                        } else if record_nt as char == query_nt{
+                            result = "query";
+                        } else {
+                            result = "other";
+                        }
+                            println!("{} {} {} {} {} {}",&cb, &umi, seqname, ref_pos, vname, result);
+                        }
+                    } else {
+                        continue
+                    }
+            } else {
+                continue
+            }        }
+    }
+    eprintln!("Found {} reads spanning this variant!", total);
+}
+
+
 fn count_variants_mm(params: &Params, variant: Variant){
+    eprintln!("Processing using cb and umi in BAM tags");
     let mut total: usize = 0;
     let seqname = variant.seq;
     let start = variant.start.parse::<u32>().unwrap();
