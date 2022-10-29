@@ -1,12 +1,12 @@
 /*
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --barcodes_file /Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz | gzip > out1.fq.gz
+time ~/develop/mutCaller/target/release/fastq1 -t 1 --barcodes_file /Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz | gzip > out1.fq.gz
 real    0m1.219s
 echo $(zcat < tests/out1.fq.gz | wc -l)/4|bc
 
 #compare to original mutcaller
 cd ~/develop/mutCaller
-time ~/develop/mutCaller/mutcaller -u -U 10 -b ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R1.fastq.gz -t ~/develop/mutCaller/mutcaller_rust/tests/sequencer_R2.fastq.gz -l ~/develop/mutCaller/data/737K-august-2016.txt.gz &&
+time ~/develop/mutCaller/mutcaller -u -U 10 -b ~/develop/mutCaller/tests/sequencer_R1.fastq.gz -t ~/develop/mutCaller/tests/sequencer_R2.fastq.gz -l ~/develop/mutCaller/data/737K-august-2016.txt.gz &&
 gzip tests/fastq_processed/sample_filtered.fastq
 
 
@@ -15,16 +15,16 @@ gzip tests/fastq_processed/sample_filtered.fastq
 ml R/4.1.1-foss-2020b
 ml SAMtools
 export transcriptome=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A
-cd ~/develop/mutCaller/mutcaller_rust/tests
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+cd ~/develop/mutCaller/tests
+time ~/develop/mutCaller/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
 zcat out1.fq.gz | head
 /app/software/CellRanger/7.0.1/lib/bin/STAR --genomeDir /fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/star --readFilesIn <(gunzip -c out1.fq.gz) \
   --runThreadN 1 --outSAMunmapped Within KeepPairs --outSAMtype BAM SortedByCoordinate
 samtools view Aligned.sortedByCoord.out.bam | head
 Rscript ~/develop/mutCaller/scripts/quantReads.R
-time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -j _ --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
+time ~/develop/mutCaller/target/release/addtag -j _ --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
 samtools view Aligned.sortedByCoord.out.tagged.bam | head
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -s _ -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
+time ~/develop/mutCaller/target/release/count -s _ -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 sort -n -k3 -k2 -k1 counts_s.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_s.txt
 
 # real  0m23.133s
@@ -34,23 +34,23 @@ ml kallisto/0.48.0-foss-2020b
 export kallisto_index=/fh/scratch/delete90/furlan_s/targ_reseq/220819/kallisto_hg38_MYBindel
 kallisto quant -i $kallisto_index -o kquant -l 400 -s 50 -t 18 --single --pseudobam out1.fq.gz
 samtools view kquant/pseudoalignments.bam | head -n 1000
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
 sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
 gzip counts.sorted_k.txt
 
 ## full run of pipeline on testdata using mm2
 ml minimap2/2.24-GCCcore-11.2.0
-cd ~/develop/mutCaller/mutcaller_rust/tests
+cd ~/develop/mutCaller/tests
 mkdir mm2
 export fa=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/fasta/genome.fa
-time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
+time ~/develop/mutCaller/target/release/fastq1 -t 1 --fastq1 sequencer_R1.fastq.gz --fastq2 sequencer_R2.fastq.gz --barcodes_file /home/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz | gzip > out1.fq.gz
 zcat out1.fq.gz | head
 minimap2 -a $fa --MD out1.fq.gz | samtools view -b -o mm2/Aligned.out.bam
 samtools sort -o mm2/Aligned.out.sorted.bam mm2/Aligned.out.bam
-time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -j _ --ibam mm2/Aligned.out.sorted.bam --obam mm2/Aligned.out.sorted.tagged.bam
+time ~/develop/mutCaller/target/release/addtag -j _ --ibam mm2/Aligned.out.sorted.bam --obam mm2/Aligned.out.sorted.tagged.bam
 samtools view mm2/Aligned.out.sorted.tagged.bam | head
 samtools index mm2/Aligned.out.sorted.tagged.bam
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts_mm.txt
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts_mm.txt
 sort -n -k4 -k3 -k2 -k1 counts_mm.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_mm.txt
 gzip counts.sorted_k.txt
 

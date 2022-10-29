@@ -1,6 +1,6 @@
 /**
 
-time ~/develop/mutCaller/mutcaller_rust/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
+time ~/develop/mutCaller/target/release/addtag --ibam Aligned.sortedByCoord.out.bam --obam Aligned.sortedByCoord.out.tagged.bam
 time ~/develop/mutCaller/addTags.py -u 10 -c 16 Aligned.sortedByCoord.out.bam | samtools view -hbo kquant/Aligned.out.tagged.bam > Aligned.sortedByCoord.out.tagged.bam
 
 

@@ -1,15 +1,15 @@
 /**
 
-cd ~/develop/mutCaller/mutcaller_rust/tests
+cd ~/develop/mutCaller/tests
 #kallisto
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
 
 #star
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 
 #mm2
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m tags > counts.tsv
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m header -s _ > counts.tsv
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m tags > counts.tsv
+time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv -m header -s _ > counts.tsv
 
 cat > variants.csv << EOL
 seq,start,ref_nt,query_nt,name
@@ -288,6 +288,7 @@ fn count_variants_mm2(params: &Params, variant: Variant){
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
         let cbumi= seqname.split(&params.split).nth(1).unwrap().to_string();
+        // eprintln!("{:?}", cbumi);
         let (cb, umi) = cbumi.split_at(params.cb_len+1);
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
             if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
