@@ -8,13 +8,14 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 
 #mm2
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts.tsv
 
 cat > variants.csv << EOL
 seq,start,ref_nt,query_nt,name
 chr12,112450407,A,G,PTPN11_227A>G
 chr2,208248389,G,A,IDH1_132G>A
 chr17,7674220,C,T,TP53_248C>T
+chr6,135181325,A,G,MYBindel
 EOL
 cat variants.csv | sed 's/,/\t/g' > variants.tsv
 
@@ -117,8 +118,6 @@ fn load_params() -> Params {
     let cb_len = cb_len.to_string().parse::<usize>().unwrap() - 1;
     let read_len = params.value_of("read_len").unwrap_or("90");
     let read_len = read_len.to_string().parse::<usize>().unwrap();
-    // let umi_len = params.value_of("umi_len").unwrap_or("10");
-    // let umi_len = umi_len.to_string().parse::<usize>().unwrap() - 1;
     let threads = params.value_of("threads").unwrap_or("1");
     let threads = threads.to_string().parse::<usize>().unwrap() - 1;
     Params{
@@ -137,11 +136,9 @@ fn main() {
     let params = load_params();
     if params.aligner == "mm2" {
         let csvdata = read_csv(&params).unwrap();
-        // let csv_iter = csvdata.iter();
         for variant in csvdata {
             eprintln!("Processing variant: {}", variant);
             eprintln!("opening bam: {}", &params.ibam.to_string());
-            // count_variants_mm(&params, variant);
             count_variants_mm(&params, variant);
         }
         return;
@@ -150,16 +147,12 @@ fn main() {
         count_kallisto(&params);
         return;
     }
-    // if params.aligner == "STAR"{
-    //     count_star(&params);
-    //     return;
-    // }
+    if params.aligner == "STAR"{
+        count_star(&params);
+        return;
+    }
     
 }
-
-// fn process_variant_string(self: StringRecord)->{
-
-// }
 
 
 fn count_star(params: &Params) {
@@ -252,13 +245,6 @@ fn count_kallisto(params: &Params) {
     eprintln!("{} good alignments counted!", &goodreadcount);
 }
 
-// chr6,135181308
-
-// fn process_variant(params: &Params, ref_id: u32)->bam::Region{
-//     let region = bam::Region::new(ref_id,112450406,112450406);
-//     return region;
-// }
-
 
 fn process_variant(ref_id: u32, start: u32)->bam::Region{
     let region = bam::Region::new(ref_id,start - 1,start - 1);
@@ -267,6 +253,7 @@ fn process_variant(ref_id: u32, start: u32)->bam::Region{
 
 
 fn count_variants_mm(params: &Params, variant: Variant){
+    let mut total: usize = 0;
     let seqname = variant.seq;
     let start = variant.start.parse::<u32>().unwrap();
     let vname = variant.name;
@@ -277,7 +264,6 @@ fn count_variants_mm(params: &Params, variant: Variant){
     let mut cb;
     let mut umi;
     let mut result = "null";
-    // let mut result: char = 'Z';
     let query_nt = variant.query_nt as char;
     let header = reader.header().clone();
     let data = header.reference_names();
@@ -287,6 +273,7 @@ fn count_variants_mm(params: &Params, variant: Variant){
     let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
     let region = process_variant(ref_id as u32, start);
     for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
+        total+=1;
         match record.as_ref().unwrap().tags().get(b"CB") {
             Some( bam::record::tags::TagValue::String(cba, _)) => {
                 cb = str::from_utf8(&cba).unwrap().to_string();
@@ -320,7 +307,7 @@ fn count_variants_mm(params: &Params, variant: Variant){
                         } else {
                             result = "other";
                         }
-                            println!("{}\t{}\t{}\t{}\t{}\t{}",&cb, &umi, seqname, ref_pos, vname, result);
+                            println!("{} {} {} {} {} {}",&cb, &umi, seqname, ref_pos, vname, result);
                         }
                     } else {
                         continue
@@ -329,5 +316,6 @@ fn count_variants_mm(params: &Params, variant: Variant){
                 continue
             }        }
     }
+    eprintln!("Found {} reads spanning this variant!", total);
 
 }

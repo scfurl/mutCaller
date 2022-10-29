@@ -50,8 +50,8 @@ samtools sort -o mm2/Aligned.out.sorted.bam mm2/Aligned.out.bam
 time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -j _ --ibam mm2/Aligned.out.sorted.bam --obam mm2/Aligned.out.sorted.tagged.bam
 samtools view mm2/Aligned.out.sorted.tagged.bam | head
 samtools index mm2/Aligned.out.sorted.tagged.bam
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
-sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv > counts_mm.txt
+sort -n -k4 -k3 -k2 -k1 counts_mm.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_mm.txt
 gzip counts.sorted_k.txt
 
 */
