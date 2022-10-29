@@ -138,7 +138,6 @@ fn load_params() -> Params {
 
 fn main() {
     let params = load_params();
-    eprintln!("{}", &params.method.to_string());
     if params.aligner == "mm2" {
         let csvdata = read_csv(&params).unwrap();
         for variant in csvdata {
@@ -166,6 +165,7 @@ fn main() {
 
 
 fn count_star(params: &Params) {
+    eprintln!("Counting star reads");
     let mut total: usize = 0;
     let mut goodreadcount: usize = 0;
     let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{
@@ -212,6 +212,7 @@ fn count_star(params: &Params) {
 
 
 fn count_kallisto(params: &Params) {
+    eprintln!("Counting kallisto reads");
     let mut total: usize = 0;
     let mut goodreadcount: usize = 0;
     let (_read_threads, _write_threads) = if (*&params.threads as i8) > 2{

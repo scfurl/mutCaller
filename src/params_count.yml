@@ -19,8 +19,8 @@ args:
         long: variants
         short: v
         takes_value: true
-        required: true
-        help: path to variants.tsv file (SNVs only supported currently) with the following formatting per line - seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
+        required: false
+        help: path to variants.tsv file (SNVs with mm2 only supported currently) with the following formatting per line - seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
     - threads:
         long: threads
         short: t
