@@ -1,0 +1,30 @@
+[package]
+name = "mutcaller_rust"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bam = "0.1.4"
+clap = { version = "2.33.0", features = ["yaml"] }
+fastq = "0.6.0"
+flate2 = "1.0.24"
+bytes = "1.1.0"
+simple-log = "1.5.1"
+toml = "0.5.7"
+serde_derive="1.0.140"
+serde="1.0.147"
+csv="1.1.6"
+
+[[bin]]
+name = "addtag"
+path = "src/addtag.rs"
+
+[[bin]]
+name = "fastq"
+path = "src/fastq.rs"
+
+[[bin]]
+name = "count"
+path = "src/count.rs"
+

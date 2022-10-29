@@ -1,0 +1,51 @@
+name: count
+version: "0.1"
+author: scott furlan <furlan_scott@hotmail.com>
+about: count reads in kallisto pseudobam file.  Bam file must have previously been formatted using mutCaller such that the header of the read has a cell barcode and umi separated from the read name by a separator designated as split (default is |BARCODE=).  Optional lookup table of a tab separaated 3 column text file with column1=transcript name; column2=ensembl gene id; column3:gene symbol.
+args:
+    - input_bam:
+        long: ibam
+        short: i
+        takes_value: true
+        required: true
+        help: input bam
+    - aligner:
+        long: aligner
+        short: a
+        takes_value: true
+        required: false
+        help: aligner software - currently kallisto and STAR are supported
+    - threads:
+        long: threads
+        short: t
+        takes_value: true
+        required: false
+        help: threads
+    - split:
+        long: split
+        short: s
+        takes_value: true
+        required: false
+        help: split read name by
+    - joiner:
+        long: joiner
+        short: j
+        takes_value: true
+        required: false
+        help: character to rejoin read name with barcode
+    - cb_len:
+        long: cb_len
+        short: c
+        takes_value: true
+        required: false
+        help: cell barcode length
+    - umi_len:
+        long: umi_len
+        short: u
+        takes_value: true
+        required: false
+    - read_len:
+        long: read_len
+        short: r
+        takes_value: true
+        required: false
