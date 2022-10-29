@@ -28,6 +28,3 @@ path = "src/fastq.rs"
 name = "count"
 path = "src/count.rs"
 
-[[bin]]
-name = "fastq1"
-path = "src/fastq1.rs"
