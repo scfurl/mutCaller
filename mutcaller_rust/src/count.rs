@@ -8,22 +8,59 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=Aligned.sortedByCoord.out.tagged.bam > counts_s.txt
 
 #mm2
-time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.tagged.bam -v variants.tsv
 
+cat > variants.csv << EOL
+seq,start,ref_nt,query_nt,name
+chr12,112450407,A,G,PTPN11_227A>G
+chr2,208248389,G,A,IDH1_132G>A
+chr17,7674220,C,T,TP53_248C>T
+EOL
+cat variants.csv | sed 's/,/\t/g' > variants.tsv
+
+chr6,135181308,135181308,gccagcaaggtgcatga,indel
+
+samtools view mm2/Aligned.out.sorted.tagged.bam "chr6:135181308-135181308"
+samtools view Aligned.sortedByCoord.out.tagged.bam "chr6:135181308-135181308"
+
+samtools view mm2/Aligned.out.sorted.tagged.bam "chr12:112450407-112450407"
 **/
-
+extern crate csv;
 extern crate clap;
 extern crate bam;
-
+extern crate serde;
+// use std::fmt;
 use std::io;
 use clap::{App, load_yaml};
 use std::str;
-
-
-
+use std::error::Error;
+use serde::Deserialize;
+use std::fmt; 
+use csv::ReaderBuilder;
+// use csv::Reader;
+use std::fs::File;
+use io::BufReader;
 
 
 // #[derive(Clone)]
+
+#[derive(Deserialize)]
+struct Variant {
+    seq: String,
+    start: String,
+    ref_nt: char,
+    query_nt: char,
+    name: String,
+}
+
+// Implement `Display` for `Variant`.
+impl fmt::Display for Variant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Use `self.number` to refer to each positional data point.
+        write!(f, "seq: {} start: {} ref_nt: {} query_nt: {} name: {}", self.seq, self.start, self.ref_nt, self.query_nt, self.name)
+    }
+}
+
 
 struct Params {
     ibam: String,
@@ -33,17 +70,47 @@ struct Params {
     joiner: String,
     threads: usize,
     cb_len: usize, 
-    // umi_len: usize,
     read_len: usize,
 }
 
+
+
+fn read_csv(params: &Params) -> Result<Vec<Variant>, Box<dyn Error>> {
+    // Build the CSV reader and iterate over each record.
+//     let data = "\
+// seq\tstart\tref_nt\tquery_nt\tname
+// chr12\t112450407\tA\tG\tPTPN11_227A>G
+// chr2\t208248389\tG\tA\tIDH1_132G>A
+// chr17\t7674220\tC\tT\tTP53_248C>T";
+    eprintln!("opening variants file: {}", &params.variants.to_string());
+    let file = File::open(&params.variants.to_string()).unwrap();
+    let reader = BufReader::new(file);
+    let mut rdr = ReaderBuilder::new()
+        .has_headers(true)
+        .delimiter(b'\t')
+        .from_reader(reader);
+    let mut csvdata = Vec::new();
+    for result in rdr.deserialize() {
+        let record: Variant = result?;
+        csvdata.push(record);
+    }
+    // let dummyvariant: Variant = Variant {seq: String::from("chr12"),
+    //         start: String::from("112450407"),
+    //         ref_nt: 'A',
+    //         query_nt: 'G',
+    //         name: String::from("PTPN11_227A>G"),
+    //     };
+    // csvdata.push(dummyvariant);
+    Ok(csvdata)
+}
+
+
 fn load_params() -> Params {
-    let yaml = load_yaml!("params.yml");
+    let yaml = load_yaml!("params_count.yml");
     let params = App::from_yaml(yaml).get_matches();
     let ibam = params.value_of("input_bam").unwrap();
-    let aligner = params.value_of("aligner").unwrap_or("STAR");
-    eprintln!("opening: {}", ibam.to_string());
-    let variants = params.value_of("variants").unwrap_or("6,135195908,135195908");
+    let aligner = params.value_of("aligner").unwrap_or("mm2");
+    let variantstring = params.value_of("variants").unwrap_or("6:135195908,135195908");
     let joiner = params.value_of("joiner").unwrap_or(":");
     let split = params.value_of("split").unwrap_or("|BARCODE=");
     let cb_len = params.value_of("cb_len").unwrap_or("16");
@@ -57,7 +124,7 @@ fn load_params() -> Params {
     Params{
         ibam: ibam.to_string(),
         aligner: aligner.to_string(),
-        variants: variants.to_string(),
+        variants: variantstring.to_string(),
         threads: threads,
         split: split.to_string(),
         joiner: joiner.to_string(),
@@ -68,21 +135,31 @@ fn load_params() -> Params {
 
 fn main() {
     let params = load_params();
-    if params.variants=="6,135195908,135195908" {
-        count_variants(&params);
+    if params.aligner == "mm2" {
+        let csvdata = read_csv(&params).unwrap();
+        // let csv_iter = csvdata.iter();
+        for variant in csvdata {
+            eprintln!("Processing variant: {}", variant);
+            eprintln!("opening bam: {}", &params.ibam.to_string());
+            // count_variants_mm(&params, variant);
+            count_variants_mm(&params, variant);
+        }
         return;
     }
     if params.aligner == "kallisto"{
         count_kallisto(&params);
         return;
     }
-    if params.aligner == "STAR"{
-        count_star(&params);
-        return;
-    }
+    // if params.aligner == "STAR"{
+    //     count_star(&params);
+    //     return;
+    // }
     
 }
 
+// fn process_variant_string(self: StringRecord)->{
+
+// }
 
 
 fn count_star(params: &Params) {
@@ -175,228 +252,82 @@ fn count_kallisto(params: &Params) {
     eprintln!("{} good alignments counted!", &goodreadcount);
 }
 
-fn process_variant(params: &Params, ref_id: u32)->bam::Region{
-    let region = bam::Region::new(ref_id,135195908,135195908);
-    // let region = bam::Region::new(5,1351959,1351959);
+// chr6,135181308
+
+// fn process_variant(params: &Params, ref_id: u32)->bam::Region{
+//     let region = bam::Region::new(ref_id,112450406,112450406);
+//     return region;
+// }
+
+
+fn process_variant(ref_id: u32, start: u32)->bam::Region{
+    let region = bam::Region::new(ref_id,start - 1,start - 1);
     return region;
 }
 
 
-
-// fn count_variants(params: &Params, bar: bar, mapq: maq_Q, baseq: baseq){
-fn count_variants(params: &Params){
-    //         // """
-    //         // :param bam_fil: bam_file
-    //         // :param bar: good barcodes dict
-    //         // :param indel: SNP = 0 indel= int(window size) insertion or deletion
-    //         // :param mapq: mapping quality
-    //         // :param baseq: base quality
-    //         // :return: two dicts 1) list of all barcodes at given var pos
-    //         // 2) dict with ref and alt barcodes
-    //         // """
-    // let barcodes = defaultdict(list);
-    // 
-    // let (read_threads, write_threads) = if (*&params.threads as i8) > 2{
-    //     (((*&params.threads/2) -1) as u16, ((*&params.threads/2) -1) as u16)
-    // } else {
-    //     (0 as u16, 0 as u16)
-    // };
+fn count_variants_mm(params: &Params, variant: Variant){
+    let seqname = variant.seq;
+    let start = variant.start.parse::<u32>().unwrap();
+    let vname = variant.name;
     let mut reader = bam::IndexedReader::build()
         .additional_threads(*&params.threads as u16)
         .from_path(&params.ibam).unwrap();
-    // let mut reader = bam::IndexedReader::from_path(&params.ibam).unwrap();
-    // let mut reader = bam::IndexedReader::from_path(&params.ibam).unwrap();
-    let output = io::BufWriter::new(io::stdout());
+    let mut seqnames = Vec::new();
+    let mut cb;
+    let mut umi;
+    let mut result = "null";
+    // let mut result: char = 'Z';
+    let query_nt = variant.query_nt as char;
     let header = reader.header().clone();
     let data = header.reference_names();
-    let mut seqnames = Vec::new();
     for seq in data {
         seqnames.push(seq)
     }
-    let ref_id = seqnames.iter().position(|&r| r == "chr6").unwrap();
-    let mut writer = bam::SamWriter::build()
-        .write_header(false)
-        .from_stream(output, reader.header().clone()).unwrap();
-    // let (bar, mapQ, baseq) = 0usize;
-
-    let filter = |record: &bam::Record| -> bool {
-        record
-            .mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))
-    };
-    let region = process_variant(&params, ref_id as u32);
-    // let mut reads = reader.fetch_by(&region, filter);
-    // let pileups = bam::Pileup::new(&mut reads);
-
-    // // let mut read_depths = vec![0usize; n_bins];
-    // for pileup in pileups {
-    //     let ref_pos = pileup.ref_pos();
-    // }
-
-    // let region = process_variant(&params, ref_id as u32);
+    let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
+    let region = process_variant(ref_id as u32, start);
     for record in reader.fetch_by(&&region, |record| record.mapq() >= 30 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(0 as u16))).unwrap(){
-        // writer.write(&record.unwrap()).unwrap();
-        let copiedrec = record.unwrap();
-        let seq = copiedrec.sequence();
-        let seqindex = 135195908 - copiedrec.start();
-        // let nt = seq[seqindex];
-        for entry in copiedrec.alignment_entries().unwrap() {
-            if let Some((record_pos, record_nt)) = entry.record_pos_nt() {
-                print!("{} {}", record_pos, record_nt as char);
-            } else {
-                print!("-");
-            }
-            print!(", ");
-            if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
-                println!("{} {}", ref_pos, ref_nt as char);
-            } else {
-                println!("-");
-            }
+        match record.as_ref().unwrap().tags().get(b"CB") {
+            Some( bam::record::tags::TagValue::String(cba, _)) => {
+                cb = str::from_utf8(&cba).unwrap().to_string();
+            },
+            _ => panic!("Unexpected type"),
         }
-
-        // println!("Start {}; AQS {}; SI {}; Cigar {}", copiedrec.start(), copiedrec.aligned_query_start(), seqindex, copiedrec.cigar().to_string());
+        match record.as_ref().unwrap().tags().get(b"UB") {
+            Some( bam::record::tags::TagValue::String(uba, _)) => {
+                // assert!(string == string);
+                umi = str::from_utf8(&uba).unwrap().to_string();
+                // write!(writer, cb);
+            },
+            _ => panic!("Unexpected type"),
+        }
+        for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
+            if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
+                if region.start() == ref_pos {
+                    // if entry.is_insertion() || entry.is_insertion(){
+                    //     println!("{}", "Indel");
+                    // }
+                    if let Some((_record_pos, record_nt)) = entry.record_pos_nt() {
+                        // let result = match record_nt as char {
+                        //     ref_nt as char => "ref",
+                        //     query_nt as char => "query",
+                        //     _ => "other",
+                        // };
+                        if ref_nt as char == record_nt as char {
+                            result = "ref";
+                        } else if record_nt as char == query_nt{
+                            result = "query";
+                        } else {
+                            result = "other";
+                        }
+                            println!("{}\t{}\t{}\t{}\t{}\t{}",&cb, &umi, seqname, ref_pos, vname, result);
+                        }
+                    } else {
+                        continue
+                    }
+            } else {
+                continue
+            }        }
     }
-    // for record in reader.fetch(&region).unwrap() {
-    //     writer.write(&record.unwrap()).unwrap();
-    // }
-    // for entry in pileup.entries() {
-    //     // AlnType doesn't implement Hash, so we have our own Feature enum
-    //     let aln = match entry.aln_type() {
-    //         AlnType::Deletion => Feature::Deletion,
-    //         AlnType::Match => Feature::Match,
-    //         AlnType::Insertion(_) => Feature::Insertion,
-    //     };
 
-    //     let record = entry.record();
-    //     if record.flag().is_supplementary() || record.tags().get(b"SA").is_some() {
-    //         let name = std::str::from_utf8(record.name())?.to_owned();
-    //         detailed_coverage
-    //             .entry(match has_breakpoint_partner(record) {
-    //                 true => Feature::SplitReadAtBreakpoints,
-    //                 false => {
-    //                     if inside.contains(&name) {
-    //                         Feature::SplitReadIn
-    //                     } else {
-    //                         Feature::SplitReadOut
-    //                     }
-    //                 }
-    //             })
-    //             .or_insert_with(|| vec![0usize; n_bins])[idx] += 1;
-    //     } else {
-    //         detailed_coverage
-    //             .entry(aln)
-    //             .or_insert_with(|| vec![0usize; n_bins])[idx] += 1;
-    //     }
-    // }
-    // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(12)) {
-    //     let column = column.unwrap();
-    //     println!("Column at {}:{}, {} records", column.ref_id(),
-    //         column.ref_pos() + 1, column.entries().len());
-
-    //     for entry in column.entries().iter() {
-    //         let seq: Vec<_> = entry.sequence().unwrap()
-    //             .map(|nt| nt as char).collect();
-    //         let qual: Vec<_> = entry.qualities().unwrap().iter()
-    //             .map(|q| (q + 33) as char).collect();
-    //         println!("    {:?}: {:?}, {:?}", entry.record(), seq, qual);
-    //     }
-    // }
-    // let mut count_r = 0; 
-
-    // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(0)) {
-    //     let column = column.unwrap();
-    //             // println!("Column at {}:{}, {} records", column.ref_id(),
-    //     //     column.ref_pos() + 1, column.entries().len());
-
-    //     for entry in column.entries().iter() {
-    //         count_r +=1;
-    //         // let seq: Vec<_> = entry.sequence().unwrap()
-    //         //     .map(|nt| nt as char).collect();
-    //         // let qual: Vec<_> = entry.qualities().unwrap().iter()
-    //         //     .map(|q| (q + 33) as char).collect();
-    //         // println!("    {:?}: {:?}, {:?}", entry.record(), seq, qual);
-    //     }
-    // }
-    // println!("Count: {}", &count_r)
-    // for record in reader.fetch(&region).unwrap() {
-    //     let record = record.unwrap();
-    //     writer.write(&record).unwrap();
-    // }
-    // // let barUcodes = defaultdict(list);
-    // // let bar_count = [("ref", vec![]), ("alt", vec![])].iter().cloned().collect::<HashMap<_,_>>();
-    // for column in bam::Pileup::with_filter(&mut reader, |record| record.flag().no_bits(1796)) 
-    // with!(pysam.AlignmentFile(bam_fil, "rb") as pile){
-    //     // logger.info("processing variant: {} {}  {}  {}  {}  {}  {}".format(self.chrm, self.start, self.end, self.ref, self.alt, self.gene, self.event));
-    //     for pileupcolumn in pile.pileup(self.chrm, (self.start - 1), self.start, true, "nofilter", 100000000) {
-    //         for read in pileupcolumn.pileups {
-    //             if read.alignment.has_tag("CB")&&read.alignment.has_tag("UB") {
-    //                 if bar.iter().all(|&x| x != read.alignment.get_tag("CB")) {
-    //                     continue;
-    //                 }
-    //                 if indel > 0 {
-    //                         if read.is_refskip||i32::from(read.alignment.mapping_quality) < i32::from(mapq) {
-    //                             continue;
-    //                         }
-    //                 } else {
-    //                     if read.is_del||read.is_refskip||i32::from(read.alignment.query_qualities[read.query_position]) < i32::from(baseq)||i32::from(read.alignment.mapping_quality) < i32::from(mapq) {
-    //                         continue;
-    //                     }:"?"
-    //                 }
-    //                 let mut q_name = read.alignment.query_name;
-    //                 let mut q_tag = read.alignment.get_tag("CB");
-    //                 let mut qU_tag = read.alignment.get_tag("UB");
-    //                 let mut qstring = ((q_tag + ":") + qU_tag);
-    //                 barcodes["{}".format(q_name)].append(q_tag);
-    //                 barUcodes["{}".format(q_name)].append(qstring);
-    //                 if indel > 0 {
-    //                     q_name = read.alignment.query_name;
-    //                     q_tag = read.alignment.get_tag("CB");
-    //                     qU_tag = read.alignment.get_tag("UB");
-    //                     qstring = ((q_tag + ":") + qU_tag);
-    //                     barcodes["{}".format(q_name)].append(q_tag);
-    //                     barUcodes["{}".format(q_name)].append(qstring);
-    //                     if self.alt == "-" {
-    //                     if read.alignment.has_tag("CB")&&read.query_position == None {
-    //                     let mut alt_tag = read.alignment.get_tag("CB");
-    //                     let mut altU_tag = read.alignment.get_tag("UB");
-    //                     let mut ustringa = ((alt_tag + ":") + altU_tag);
-    //                     bar_count["alt"].append(ustringa);
-    //                     } else {
-    //                     let mut ref_tag = read.alignment.get_tag("CB");
-    //                     let mut refU_tag = read.alignment.get_tag("UB");
-    //                     let mut ustring = ((ref_tag + ":") + refU_tag);
-    //                     bar_count["ref"].append(ustring);
-    //                     }
-    //                     } else {
-    //                     if read.alignment.has_tag("CB")&&read.indel == indel&&read.alignment.query_alignment_sequence[(read.query_position + 1)..((read.query_position + read.indel) + 1)] == self.alt {
-    //                     let mut alt_tag = read.alignment.get_tag("CB");
-    //                     let mut altU_tag = read.alignment.get_tag("UB");
-    //                     let mut ustringa = ((alt_tag + ":") + altU_tag);
-    //                     bar_count["alt"].append(ustringa);
-    //                     } else {
-    //                     let mut ref_tag = read.alignment.get_tag("CB");
-    //                     let mut refU_tag = read.alignment.get_tag("UB");
-    //                     let mut ustring = ((ref_tag + ":") + refU_tag);
-    //                     bar_count["ref"].append(ustring);
-    //                     }
-    //                     }
-    //                 } else {
-    //                     if read.alignment.query_sequence[read.query_position] != self.alt {
-    //                         let mut ref_tag = read.alignment.get_tag("CB");
-    //                         let mut refU_tag = read.alignment.get_tag("UB");
-    //                         let mut ustring = ((ref_tag + ":") + refU_tag);
-    //                         bar_count["ref"].append(ustring);
-    //                     } else {
-    //                     if read.alignment.query_sequence[read.query_position] == self.alt {
-    //                         let mut alt_tag = read.alignment.get_tag("CB");
-    //                         let mut altU_tag = read.alignment.get_tag("UB");
-    //                         let mut ustringa = ((alt_tag + ":") + altU_tag);
-    //                         bar_count["alt"].append(ustringa);
-    //                         }      
-    //                     }
-    //                 }
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     return (barUcodes, bar_count);
 }

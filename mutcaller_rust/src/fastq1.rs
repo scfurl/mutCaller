@@ -47,7 +47,9 @@ time ~/develop/mutCaller/mutcaller_rust/target/release/fastq1 -t 1 --fastq1 sequ
 zcat out1.fq.gz | head
 minimap2 -a $fa --MD out1.fq.gz | samtools view -b -o mm2/Aligned.out.bam
 samtools sort -o mm2/Aligned.out.sorted.bam mm2/Aligned.out.bam
-samtools index mm2/Aligned.out.sorted.bam
+time ~/develop/mutCaller/mutcaller_rust/target/release/addtag -j _ --ibam mm2/Aligned.out.sorted.bam --obam mm2/Aligned.out.sorted.tagged.bam
+samtools view mm2/Aligned.out.sorted.tagged.bam | head
+samtools index mm2/Aligned.out.sorted.tagged.bam
 time ~/develop/mutCaller/mutcaller_rust/target/release/count -t 24 --ibam=kquant/pseudoalignments.bam -a kallisto > counts_k.txt
 sort -n -k3 -k2 -k1 counts_k.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_k.txt
 gzip counts.sorted_k.txt
