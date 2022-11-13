@@ -1,0 +1,65 @@
+name: fastq1
+version: "0.1"
+author: scott furlan <furlan_scott@hotmail.com>
+about: parse fastqs
+args:
+    - fastq1:
+        long: fastq1
+        short: f1
+        takes_value: true
+        required: true
+        help: input fastq with barcodes
+    - fastq2:
+        long: fastq2
+        short: f2
+        takes_value: true
+        required: true
+        help: input fastq with read
+    - outfastq:
+        long: outfastq
+        short: o
+        takes_value: true
+        required: false
+        help: output fastq
+    - barcodes_file:
+        long: barcodes_file
+        short: bc
+        takes_value: true
+        required: false
+        help: barcodes_file
+    - threads:
+        long: threads
+        short: t
+        takes_value: true
+        required: false
+        help: threads
+    - cb_len:
+        long: cb_length
+        short: c
+        takes_value: true
+        required: false
+        help: length of umi sequence
+    - umi_len:
+        long: umi_length
+        short: u
+        takes_value: true
+        required: false
+        help: length of umi sequence
+    - n_reads:
+        long: n_reads
+        short: n
+        takes_value: true
+        required: false
+        help: only run first n reads; use default all to run on all reads
+    - debug:
+        long: debug
+        short: d
+        takes_value: false
+        required: false
+        help: run in debug mode; prints reads before and after modification to stdout
+    - name_sep:
+        long: name_sep
+        short: s
+        takes_value: true
+        required: false
+        help: string to demarcate barcode in name of read
