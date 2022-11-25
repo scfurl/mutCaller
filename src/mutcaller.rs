@@ -235,7 +235,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                      .output()
                      .expect("Failed to execute minimap2");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Minimap2 complete; Running samtools sort");
     let output = Command::new("samtools")
                     .arg("sort")
@@ -248,7 +248,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools sort");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools sort complete; Running samtools view");
     let output = Command::new("samtools")
                     .arg("view")
@@ -262,7 +262,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools sort");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools view complete; Running samtools index");
     let output = Command::new("samtools")
                     .arg("index")
@@ -273,7 +273,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stderr(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools index");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     fs::remove_file("Aligned.mm2.sorted.sam")?;
     fs::remove_file("Aligned.mm2.sam")?;
     fs::remove_file("mutcaller_R1.fq.gz")?;
