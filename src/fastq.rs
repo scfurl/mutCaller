@@ -52,7 +52,7 @@ samtools view mm2/Aligned.out.sorted.bam | head
 samtools index mm2/Aligned.out.sorted.bam
 time ~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.bam -v variants.tsv > counts_mm.txt
 sort -n -k4 -k3 -k2 -k1 counts_mm.txt | uniq -c | sort -k2 -k3 -k4 > counts.sorted_mm.txt
-gzip counts.sorted_k.txt
+gzip counts.sorted_mm.txt
 
 */
 

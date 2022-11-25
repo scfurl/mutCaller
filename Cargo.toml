@@ -12,19 +12,14 @@ flate2 = "1.0.24"
 bytes = "1.1.0"
 simple-log = "1.5.1"
 toml = "0.5.7"
-serde_derive="1.0.140"
-serde="1.0.147"
-csv="1.1.6"
+serde_derive = "1.0.140"
+serde = "1.0.147"
+csv = "1.1.6"
+itertools = "0.10.0"
+
 
 [[bin]]
-name = "addtag"
-path = "src/addtag.rs"
+name = "mutcaller"
+path = "src/mutcaller.rs"
 
-[[bin]]
-name = "fastq"
-path = "src/fastq.rs"
-
-[[bin]]
-name = "count"
-path = "src/count.rs"
 

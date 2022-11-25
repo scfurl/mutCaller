@@ -26,11 +26,25 @@ samtools view mm2/Aligned.out.sorted.tagged.bam "chr6:135181308-135181308"
 samtools view Aligned.sortedByCoord.out.tagged.bam "chr6:135181308-135181308"
 
 samtools view mm2/Aligned.out.sorted.tagged.bam "chr12:112450407-112450407"
+
+
+
+
+###TODO####
+check sequencing quality of base in question
+parameterize mapQ for mm2
+
+
+
+~/develop/mutCaller/target/release/count -t 24 --ibam=mm2/Aligned.out.sorted.bam -v variants.tsv
+
 **/
 extern crate csv;
 extern crate clap;
 extern crate bam;
 extern crate serde;
+extern crate itertools;
+
 // use std::fmt;
 use std::io;
 use clap::{App, load_yaml};
@@ -41,7 +55,11 @@ use std::fmt;
 use csv::ReaderBuilder;
 // use csv::Reader;
 use std::fs::File;
-use io::BufReader;
+use std::io::{BufRead, BufReader};
+use itertools::Itertools;
+use flate2::GzBuilder;
+use flate2::Compression;
+use std::io::Write;
 
 
 // #[derive(Clone)]
@@ -62,6 +80,16 @@ impl fmt::Display for Variant {
         write!(f, "seq: {} start: {} ref_nt: {} query_nt: {} name: {}", self.seq, self.start, self.ref_nt, self.query_nt, self.name)
     }
 }
+
+
+// Implement `Display` for `Record`.
+impl fmt::Display for Record {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Use `self.number` to refer to each positional data point.
+        write!(f, "cb: {} umi: {} seq: {} loc: {} variant: {} call: {}", self.cb, self.umi, self.seq, self.loc, self.variant, self.call)
+    }
+}
+
 
 
 struct Params {
@@ -140,16 +168,30 @@ fn main() {
     let params = load_params();
     if params.aligner == "mm2" {
         let csvdata = read_csv(&params).unwrap();
+        // let f = File::create("counts_mm.txt.gz")?;
+        // let mut gz = GzBuilder::new()
+        //                 .filename("counts_mm.txt")
+        //                 .write(f, Compression::default());
+        // for (count, record) in cdata {
+        //     let count_str = record+&" ".to_owned()+&(count.to_string());
+        //     gz.write_all(count_str.as_bytes())?;
+        // }
+        // gz.finish()?;
+        let mut count_vec = Vec::new();
         for variant in csvdata {
             eprintln!("Processing variant: {}", variant);
             eprintln!("opening bam: {}", &params.ibam.to_string());
             if params.method.to_string() == "tags"{
-                count_variants_mm(&params, variant);
+                count_vec.push(count_variants_mm(&params, variant));
+                // let cdata = count(&sdata);
+
             } else {
-                count_variants_mm2(&params, variant);
+                count_vec.push(count_variants_mm2(&params, variant));
+                // let cdata = count(&sdata);
             }
             
         }
+        let _none = writer_fn(count_vec, "counts_mm.txt.gz".to_string());
         return;
     }
     if params.aligner == "kallisto"{
@@ -161,6 +203,32 @@ fn main() {
         return;
     }
     
+}
+
+fn writer_fn (count_vec: Vec<Vec<Vec<u8>>>, fname: String) -> Result<(), Box<dyn Error>> {
+        let f = File::create(fname)?;
+        let mut gz = GzBuilder::new()
+                        .filename("counts_mm.txt.gz")
+                        .write(f, Compression::default());
+        for result in count_vec {
+            for line in result {
+                gz.write_all(&line)?;
+            }
+        }
+        gz.finish()?;
+        Ok(())
+}
+
+
+
+#[derive(Deserialize, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct Record {
+    cb: String,
+    umi: String,
+    seq: String,
+    loc: usize,
+    variant: String,
+    call: String,
 }
 
 
@@ -257,7 +325,7 @@ fn process_variant(ref_id: u32, start: u32)->bam::Region{
 }
 
 
-fn count_variants_mm2(params: &Params, variant: Variant){
+fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
     eprintln!("Processing using cb and umi in header");
     let mut total: usize = 0;
     let seqname = variant.seq;
@@ -267,13 +335,14 @@ fn count_variants_mm2(params: &Params, variant: Variant){
         .additional_threads(*&params.threads as u16)
         .from_path(&params.ibam).unwrap();
     let mut seqnames = Vec::new();
-    let mut result = "null";
+    let mut result = "";
     let query_nt = variant.query_nt as char;
     let header = reader.header().clone();
-    let data = header.reference_names();
-    for seq in data {
+    let hdata = header.reference_names();
+    for seq in hdata {
         seqnames.push(seq)
     }
+    let mut data = Vec::new();
     let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
     let region = process_variant(ref_id as u32, start);
     for record in reader.fetch_by(&&region, |record| record.mapq() >= 4 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(16 as u16))).unwrap(){
@@ -283,20 +352,11 @@ fn count_variants_mm2(params: &Params, variant: Variant){
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
         let cbumi= readheader.split(&params.split).nth(1).unwrap().to_string();
-        // eprintln!("{:?}", cbumi);
         let (cb, umi) = cbumi.split_at(params.cb_len+1);
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
             if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
                 if region.start() == ref_pos {
-                    // if entry.is_insertion() || entry.is_insertion(){
-                    //     println!("{}", "Indel");
-                    // }
                     if let Some((_record_pos, record_nt)) = entry.record_pos_nt() {
-                        // let result = match record_nt as char {
-                        //     ref_nt as char => "ref",
-                        //     query_nt as char => "query",
-                        //     _ => "other",
-                        // };
                         if ref_nt as char == record_nt as char {
                             result = "ref";
                         } else if record_nt as char == query_nt{
@@ -304,7 +364,7 @@ fn count_variants_mm2(params: &Params, variant: Variant){
                         } else {
                             result = "other";
                         }
-                            println!("{} {} {} {} {} {}",cb, umi, seqname, ref_pos, vname, result);
+                            data.push(format!("{} {} {} {} {} {}", &cb, &umi, seqname, ref_pos, vname, result))
                         }
                     } else {
                         continue
@@ -314,10 +374,18 @@ fn count_variants_mm2(params: &Params, variant: Variant){
             }        }
     }
     eprintln!("Found {} reads spanning this variant!", total);
+    data.sort();
+    let mut out_vec = Vec::new();
+    let cdata = data.into_iter().dedup_with_count();
+    for (count, record) in cdata {
+       let count_str = record+&" ".to_owned()+&(count.to_string()+&"\n".to_owned());
+        out_vec.push(count_str.as_bytes().to_owned());
+    }
+    return out_vec;
 }
 
 
-fn count_variants_mm(params: &Params, variant: Variant){
+fn count_variants_mm(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
     eprintln!("Processing using cb and umi in BAM tags");
     let mut total: usize = 0;
     let seqname = variant.seq;
@@ -332,10 +400,11 @@ fn count_variants_mm(params: &Params, variant: Variant){
     let mut result = "null";
     let query_nt = variant.query_nt as char;
     let header = reader.header().clone();
-    let data = header.reference_names();
-    for seq in data {
+    let hdata = header.reference_names();
+    for seq in hdata {
         seqnames.push(seq)
     }
+    let mut data = Vec::new();
     let ref_id = seqnames.iter().position(|&r| r == &seqname).unwrap();
     let region = process_variant(ref_id as u32, start);
     for record in reader.fetch_by(&&region, |record| record.mapq() > 4 && (record.flag().all_bits(0 as u16) || record.flag().all_bits(16 as u16))).unwrap(){
@@ -348,24 +417,15 @@ fn count_variants_mm(params: &Params, variant: Variant){
         }
         match record.as_ref().unwrap().tags().get(b"UB") {
             Some( bam::record::tags::TagValue::String(uba, _)) => {
-                // assert!(string == string);
                 umi = str::from_utf8(&uba).unwrap().to_string();
-                // write!(writer, cb);
             },
             _ => panic!("Unexpected type"),
         }
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
             if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
                 if region.start() == ref_pos {
-                    // if entry.is_insertion() || entry.is_insertion(){
-                    //     println!("{}", "Indel");
-                    // }
+
                     if let Some((_record_pos, record_nt)) = entry.record_pos_nt() {
-                        // let result = match record_nt as char {
-                        //     ref_nt as char => "ref",
-                        //     query_nt as char => "query",
-                        //     _ => "other",
-                        // };
                         if ref_nt as char == record_nt as char {
                             result = "ref";
                         } else if record_nt as char == query_nt{
@@ -373,7 +433,7 @@ fn count_variants_mm(params: &Params, variant: Variant){
                         } else {
                             result = "other";
                         }
-                            println!("{} {} {} {} {} {}",&cb, &umi, seqname, ref_pos, vname, result);
+                            data.push(format!("{} {} {} {} {} {}", &cb, &umi, seqname, ref_pos, vname, result))
                         }
                     } else {
                         continue
@@ -383,5 +443,13 @@ fn count_variants_mm(params: &Params, variant: Variant){
             }        }
     }
     eprintln!("Found {} reads spanning this variant!", total);
-
+    data.sort();
+    let mut out_vec = Vec::new();
+    let cdata = data.into_iter().dedup_with_count();
+    for (count, record) in cdata {
+        let count_str = record+&" ".to_owned()+&(count.to_string()+&"\n".to_owned());
+        // let count_str = record+&" ".to_owned()+&(count.to_string())+&"\n".to_owned();
+        out_vec.push(count_str.as_bytes().to_owned());
+    }
+    return out_vec;
 }
