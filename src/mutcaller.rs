@@ -222,7 +222,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
     //                  .output()
     //                  .expect("Failed to execute minimap2");
     eprintln!("{}", "Running minimap2");
-    let output = Command::new("/Users/sfurlan/.local/bin/minimap2")
+    let output = Command::new("minimap2")
                     .arg("--MD")
                     .arg("-a")
                     .arg(params.genome.to_string())
