@@ -441,6 +441,7 @@ fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
     let split = "|BARCODE=".to_string();
     let ibam = "Aligned.mm2.sorted.bam";
     let mut total: usize = 0;
+    let mut err: usize = 0;
     let seqname = variant.seq;
     let start = variant.start.parse::<u32>().unwrap();
     let vname = variant.name;
@@ -464,7 +465,13 @@ fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
             Ok(v) => v,
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
-        let cbumi= readheader.split(&split).nth(1).unwrap().to_string();
+        let cbumi = match readheader.split(&split).nth(1){
+            Some(v) => v.to_string(),
+            None => {
+                err+=1;
+                continue
+            },
+        };
         let (cb, umi) = cbumi.split_at((params.cb_len+1).into());
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
             if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
@@ -486,7 +493,7 @@ fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
                 continue
             }        }
     }
-    eprintln!("Found {} reads spanning this variant!", total);
+    eprintln!("Found {} reads spanning this variant!\n\tNumbers of errors: {}", total, err);
     data.sort();
     let mut out_vec = Vec::new();
     let cdata = data.into_iter().dedup_with_count();
