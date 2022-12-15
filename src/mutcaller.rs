@@ -3,12 +3,14 @@
 
 Full pipeline in 1 command...
 
-cd /Users/sfurlan/develop/mutCaller/tests
+cd ~/develop/mutCaller/tests
 cargo build --release
 ../target/release/mutcaller --help
 
-bc=/Users/sfurlan/develop/mutCaller/data/737K-august-2016.txt.gz
+bc=~/develop/mutCaller/data/737K-august-2016.txt.gz
+
 fa=/Users/sfurlan/refs/genome.fa
+fa=/fh/fast/furlan_s/grp/refs/GRCh38/refdata-gex-GRCh38-2020-A/fasta/genome.fa
 ../target/release/mutcaller \
                         -t 8 -g $fa -b $bc -v variants.tsv \
                         --fastq1 sequencer_R1.fastq.gz \
@@ -67,7 +69,7 @@ impl fmt::Display for Variant {
     }
 }
 
-
+#[derive(Debug)]
 struct Params {
     fastq1: String,
     fastq2: String,
@@ -80,6 +82,8 @@ struct Params {
     variants: String,
     read_len: usize,
     output: String,
+    keep: bool,
+    verbose: bool,
 }
 
 
@@ -102,6 +106,30 @@ fn load_params() -> Params {
     let read_len = read_len.to_string().parse::<usize>().unwrap();
     let aligner = params.value_of("aligner").unwrap_or("mm2");
     let variantstring = params.value_of("variants").unwrap();
+    let mut verbose = true;
+    if params.is_present("quiet") {
+            verbose = false
+    };
+    let mut keep = false;
+    if params.is_present("keep_files") {
+            keep = true
+    };
+    // let verbose = match params.value_of("verbose") {
+    //     Some(val) => println!("true"),
+    //     None => println!("false"),
+    // };
+    // let keep = match params.value_of("keep_files"){
+    //     Some(val) => println!("true"),
+    //     None => println!("false"),
+    // };
+    // let verbose = match params.value_of("verbose"){
+    //     Err(..) => panic!("Verbose flag not recognized"),
+    //     Ok(verbose) => verbose,
+    // };
+    // let keep = match params.value_of("keep_files"){
+    //     Err(..) => panic!("keep_files flag not recognized"),
+    //     Ok(verbose) => verbose,
+    // };
 
     Params{
         fastq1: fastq1.to_string(),
@@ -115,6 +143,8 @@ fn load_params() -> Params {
         aligner: aligner.to_string(),
         variants: variantstring.to_string(),
         read_len: read_len as usize,
+        keep: keep,
+        verbose: verbose,
     }
 }
 
@@ -128,7 +158,7 @@ fn read_csv(params: &Params) -> Result<Vec<Variant>, Box<dyn Error>> {
 // chr12\t112450407\tA\tG\tPTPN11_227A>G
 // chr2\t208248389\tG\tA\tIDH1_132G>A
 // chr17\t7674220\tC\tT\tTP53_248C>T";
-    eprintln!("opening variants file: {}", &params.variants.to_string());
+    eprintln!("Opening variants file: {}\n", &params.variants.to_string());
     let file = File::open(&params.variants.to_string()).unwrap();
     let reader = BufReader::new(file);
     let mut rdr = ReaderBuilder::new()
@@ -161,11 +191,16 @@ fn main() {
         .level("debug")
         .output_file()
         .build();
-
+    let _prog_test_res = test_progs();
     let _ = simple_log::new(config);
     info!("starting!");
     let params = load_params();
-    eprintln!("Running with {} thread(s)!", &params.threads);
+    if params.verbose {
+        eprintln!("\n\n\n\nRunning with {} thread(s)!\n", &params.threads);
+        // eprintln!("Params: {:?} ", &params);
+        eprintln!("Processing fastqs:\n\t{}\n\t{}\n", &params.fastq1, &params.fastq2);
+    }
+    
     let _fqr = fastq(&params);
     info!("done!");
     let _ar = align(&params);
@@ -173,12 +208,13 @@ fn main() {
         let csvdata = read_csv(&params).unwrap();
         let mut count_vec = Vec::new();
         for variant in csvdata {
-            eprintln!("Processing variant: {}", variant);
-            eprintln!("opening bam: {}", &"Aligned.mm2.bam".to_string());
+            eprintln!("\nProcessing variant: {}", variant);
+            eprintln!("\nOpening bam: {}", &"Aligned.mm2.bam".to_string());
             count_vec.push(count_variants_mm2(&params, variant));
             
         }
         let _none = writer_fn(count_vec, params.output.to_string());
+        eprintln!("Done!!");
         return;
     }
     if params.aligner == "kallisto"{
@@ -196,6 +232,24 @@ fn main() {
 // samtools sort -@ 8 -o Aligned.mm2.sorted.sam Aligned.mm2.sam
 // samtools view -b -@ 8 -o Aligned.mm2.sorted.sam Aligned.mm2.sorted.bam
 // samtools index -@ 8 Aligned.mm2.sorted.bam
+
+fn test_progs () -> Result<(), Box<dyn Error>>{
+    let _output = Command::new("minimap2")
+                    .arg("-h")
+                    .stderr(Stdio::piped())
+                    .stdout(Stdio::piped())
+                     .output()
+                     .expect("Failed to execute minimap2");
+    let _output = Command::new("samtools")
+                    .arg("-h")
+                    .stderr(Stdio::piped())
+                    .stdout(Stdio::piped())
+                     .output()
+                     .expect("Failed to execute samtools");
+    // eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    Ok(())
+}
+
 
 fn align (params: &Params)-> Result<(), Box<dyn Error>> {
     // let mm_cmd = "/Users/sfurlan/.local/bin/minimap2";
@@ -221,7 +275,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
     //                 .arg("-h")
     //                  .output()
     //                  .expect("Failed to execute minimap2");
-    eprintln!("{}", "Running minimap2");
+    eprintln!("{}", "Aligning reads using minimap2");
     let output = Command::new("minimap2")
                     .arg("--MD")
                     .arg("-a")
@@ -235,7 +289,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                      .output()
                      .expect("Failed to execute minimap2");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Minimap2 complete; Running samtools sort");
     let output = Command::new("samtools")
                     .arg("sort")
@@ -248,7 +302,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools sort");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools sort complete; Running samtools view");
     let output = Command::new("samtools")
                     .arg("view")
@@ -262,7 +316,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools sort");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools view complete; Running samtools index");
     let output = Command::new("samtools")
                     .arg("index")
@@ -273,10 +327,12 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stderr(Stdio::piped())
                     .output()
                      .expect("Failed to execute samtools index");
-    eprintln!("{}", str::from_utf8(output.stdout.as_slice()).unwrap());
-    fs::remove_file("Aligned.mm2.sorted.sam")?;
-    fs::remove_file("Aligned.mm2.sam")?;
-    fs::remove_file("mutcaller_R1.fq.gz")?;
+    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    if !params.keep {
+        fs::remove_file("Aligned.mm2.sorted.sam")?;
+        fs::remove_file("Aligned.mm2.sam")?;
+        fs::remove_file("mutcaller_R1.fq.gz")?;
+    }
     Ok(())
 }
 
@@ -368,7 +424,7 @@ fn fastq(params: &Params) -> Result<(), Box<dyn Error>>{
         .expect("Unknown format for file 2.");
     })
     .expect("Unknown format for file 1.");
-    eprintln!("Total number of reads processed: {}, {} of these had Ns, {} of these had BC not in whitelist", total_count, nfound_count, mmcb_count);
+    eprintln!("Total number of reads processed: {}, {} of these had Ns, {} of these had BC not in whitelist\n", total_count, nfound_count, mmcb_count);
     Ok(())
 }
 

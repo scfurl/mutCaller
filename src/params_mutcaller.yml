@@ -1,5 +1,5 @@
 name: mutcaller
-version: "0.2"
+version: "0.21"
 author: scfurl
 about: custom counting pipeline for 10X targeted sequencing
 args:
@@ -69,3 +69,15 @@ args:
         takes_value: true
         required: false
         help: read 2 length (default 90)
+    - keep_files:
+        long: keep_files
+        short: k
+        takes_value: false
+        required: false
+        help: use this flag to keep files (default is remove intermediate files)
+    - verbose:
+        long: quiet
+        short: q
+        takes_value: false
+        required: false
+        help: use this flag to run in quiet mode (no verbosity)
