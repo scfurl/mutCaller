@@ -1,5 +1,5 @@
 name: mutcaller
-version: "0.21"
+version: "0.22"
 author: scfurl
 about: custom counting pipeline for 10X targeted sequencing
 args:
