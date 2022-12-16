@@ -191,21 +191,34 @@ fn main() {
         .level("debug")
         .output_file()
         .build();
-    let _prog_test_res = test_progs();
     let _ = simple_log::new(config);
     info!("starting!");
+
     let params = load_params();
+        if params.verbose {
+        eprintln!("\n\n\n\nParsing Parameters!\n");
+    }
+    if params.verbose {
+        eprintln!("\n\n\n\nChecking programs and parsing variants!\n");
+    }
+    let _prog_test_res = test_progs();
+    let csvdata = read_csv(&params).unwrap();
+    
+    if params.verbose {
+        for variant in &csvdata {
+                eprintln!("\nCorrectly processed variant: {}", variant);
+        }
+    }
     if params.verbose {
         eprintln!("\n\n\n\nRunning with {} thread(s)!\n", &params.threads);
         // eprintln!("Params: {:?} ", &params);
         eprintln!("Processing fastqs:\n\t{}\n\t{}\n", &params.fastq1, &params.fastq2);
     }
-    
     let _fqr = fastq(&params);
     info!("done!");
     let _ar = align(&params);
     if params.aligner == "mm2" {
-        let csvdata = read_csv(&params).unwrap();
+        // let csvdata = read_csv(&params).unwrap();
         let mut count_vec = Vec::new();
         for variant in csvdata {
             eprintln!("\nProcessing variant: {}", variant);
@@ -214,7 +227,7 @@ fn main() {
             
         }
         let _none = writer_fn(count_vec, params.output.to_string());
-        eprintln!("Done!!");
+        eprintln!("\n\nDone!!");
         return;
     }
     if params.aligner == "kallisto"{
@@ -225,7 +238,6 @@ fn main() {
         count_star(&params);
         return;
     }
-    
 }
 
 // minimap2 --MD -a $fa -t 8 mutcaller_R1.fq.gz -o Aligned.mm2.sam
@@ -239,13 +251,13 @@ fn test_progs () -> Result<(), Box<dyn Error>>{
                     .stderr(Stdio::piped())
                     .stdout(Stdio::piped())
                      .output()
-                     .expect("Failed to execute minimap2");
+                     .expect("\n\n*******Failed to execute minimap2*******\n\n");
     let _output = Command::new("samtools")
                     .arg("-h")
                     .stderr(Stdio::piped())
                     .stdout(Stdio::piped())
                      .output()
-                     .expect("Failed to execute samtools");
+                     .expect("\n\n*******Failed to execute samtools*******\n\n");
     // eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }
@@ -288,7 +300,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stderr(Stdio::piped())
                     .stdout(Stdio::piped())
                      .output()
-                     .expect("Failed to execute minimap2");
+                     .expect("\n\n*******Failed to execute minimap2*******\n\n");
     eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Minimap2 complete; Running samtools sort");
     let output = Command::new("samtools")
@@ -301,7 +313,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stderr(Stdio::piped())
                     .stdout(Stdio::piped())
                     .output()
-                     .expect("Failed to execute samtools sort");
+                     .expect("\n\n*******Failed to execute samtools view*******\n\n");
     eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools sort complete; Running samtools view");
     let output = Command::new("samtools")
@@ -315,7 +327,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stderr(Stdio::piped())
                     .stdout(Stdio::piped())
                     .output()
-                     .expect("Failed to execute samtools sort");
+                     .expect("\n\n*******Failed to execute samtools sort*******\n\n");
     eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     eprintln!("{}", "Samtools view complete; Running samtools index");
     let output = Command::new("samtools")
@@ -326,7 +338,7 @@ fn align (params: &Params)-> Result<(), Box<dyn Error>> {
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .output()
-                     .expect("Failed to execute samtools index");
+                     .expect("\n\n*******Failed to execute samtools index*******\n\n");
     eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     if !params.keep {
         fs::remove_file("Aligned.mm2.sorted.sam")?;
@@ -463,7 +475,7 @@ fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
         total+=1;
         let readheader = match str::from_utf8(record.as_ref().unwrap().name()) {
             Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            Err(e) => panic!("\n\n*******Invalid UTF-8 sequence: {}*******\n\n", e),
         };
         let cbumi = match readheader.split(&split).nth(1){
             Some(v) => v.to_string(),
@@ -472,6 +484,10 @@ fn count_variants_mm2(params: &Params, variant: Variant) -> Vec<Vec<u8>>{
                 continue
             },
         };
+        if cbumi.len() <= params.cb_len+1 {
+            err+=1;
+            continue
+        }
         let (cb, umi) = cbumi.split_at((params.cb_len+1).into());
         for entry in record.as_ref().unwrap().alignment_entries().unwrap() {
             if let Some((ref_pos, ref_nt)) = entry.ref_pos_nt() {
@@ -603,7 +619,7 @@ fn count_star(params: &Params) {
         let newrecord = record.unwrap();
         let seqname = match str::from_utf8(&newrecord.name()) {
             Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            Err(e) => panic!("\n\n*******Invalid UTF-8 sequence: {}*******\n\n", e),
         };
         let cbumi= seqname.split(&split).nth(1).unwrap().to_string();
         let _modified_name = seqname.replace(&split, &joiner);
@@ -650,7 +666,7 @@ fn count_kallisto(params: &Params) {
         let newrecord = record.unwrap();
         let seqname = match str::from_utf8(&newrecord.name()) {
             Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            Err(e) => panic!("\n\n*******Invalid UTF-8 sequence: {}*******\n\n", e),
         };
         let cbumi= seqname.split(&split).nth(1).unwrap().to_string();
         let _modified_name = seqname.replace(&split, &joiner);
@@ -673,18 +689,18 @@ fn count_kallisto(params: &Params) {
 fn lines_from_file(filename: &str) -> Vec<String> {
     let path = Path::new(filename);
     let file = match File::open(&path) {
-        Err(_why) => panic!("couldn't open {}", path.display()),
+        Err(_why) => panic!("\n\n*******couldn't open {}*******\n\n", path.display()),
         Ok(file) => file,
     };
     if path.extension() == Some(OsStr::new("gz")){
         let buf = BufReader::new(read::GzDecoder::new(file));
         buf.lines()
-            .map(|l| l.expect("Could not parse line"))
+            .map(|l| l.expect("\n\n*******Could not parse line*******\n\n"))
             .collect()
     }else{
         let buf = BufReader::new(file);
         buf.lines()
-            .map(|l| l.expect("Could not parse line"))
+            .map(|l| l.expect("\n\n*******Could not parse line*******\n\n"))
             .collect()
     }
 }
