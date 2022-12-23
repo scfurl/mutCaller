@@ -1,66 +1,37 @@
-name: count
+name: countbam
 version: "0.1"
-author: scott furlan <furlan_scott@hotmail.com>
-about: count reads in kallisto pseudobam file.  Bam file must have previously been formatted using mutCaller such that the header of the read has a cell barcode and umi separated from the read name by a separator designated as split (default is |BARCODE=).  Optional lookup table of a tab separaated 3 column text file with column1=transcript name; column2=ensembl gene id; column3:gene symbol.
+author: scfurl
+about: count reads bam files per cb and umi
 args:
-    - input_bam:
-        long: ibam
-        short: i
+    - bam:
+        long: bam
+        short: b
         takes_value: true
         required: true
         help: input bam
-    - aligner:
-        long: aligner
-        short: a
-        takes_value: true
-        required: false
-        help: aligner software - currently mm2 (default) and kallisto are supported
-    - variants:
-        long: variants
-        short: v
-        takes_value: true
-        required: false
-        help: path to variants.tsv file (SNVs with mm2 only supported currently) with the following formatting per line - seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
     - threads:
         long: threads
         short: t
         takes_value: true
         required: false
         help: threads
-    - split:
-        long: split
-        short: s
-        takes_value: true
-        required: false
-        help: split read name by
-    - joiner:
-        long: joiner
-        short: j
-        takes_value: true
-        required: false
-        help: character to rejoin read name with barcode
-    - cb_len:
-        long: cb_len
-        short: c
-        takes_value: true
-        required: false
-        help: cell barcode length (default 16)
-    - umi_len:
-        long: umi_len
-        short: u
-        takes_value: true
-        required: false
-        help: umi length (default 10)
-    - read_len:
-        long: read_len
-        short: r
-        takes_value: true
-        required: false
-        help: read 2 length (default 90)
     - method:
-        long: method
         short: m
+        help: method to process using 'header' or 'tag'; default is 'header'
         takes_value: true
         required: false
-        help: method of identifying cell barcode and umi.  Either 'tags' which means CB and UMI are embedded in BAM tags, or 'header' meaning they are in the read name (header separated by string split - see above)
-
+    - stringsep:
+        short: s
+        help: character to parse header; default is ';'
+        takes_value: true
+        required: false
+    - cbsep:
+        short: c
+        help: character to parse cell barcode; default = 'CB='
+        takes_value: true
+        required: false
+    - umisep:
+        short: umi
+        help: character to parse umi; default = 'XM='
+        takes_value: true
+        required: false
