@@ -22,4 +22,6 @@ itertools = "0.10.0"
 name = "mutcaller"
 path = "src/mutcaller.rs"
 
-
+[[bin]]
+name = "countbam"
+path = "src/countbam.rs"
