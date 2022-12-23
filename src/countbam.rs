@@ -41,6 +41,7 @@ struct Params {
     returnseq: bool,
     cbpos: usize,
     umipos: usize,
+    outfile: String,
 }
 
     // #[derive(Debug)]
@@ -86,6 +87,7 @@ fn load_params() -> Params {
     if params.is_present("returnseq") {
         returnseq = true;
     }
+    let outfile = params.value_of("outfile").unwrap_or("counts.txt.gz");
     Params {
         bam: bam.to_string(),
         threads: threads as u16,
@@ -97,6 +99,7 @@ fn load_params() -> Params {
         returnseq: returnseq,
         cbpos: cbpos,
         umipos: umipos,
+        outfile: outfile.to_string(),
     }
 }
 
@@ -125,7 +128,7 @@ fn main() {
     if params.method == "header" {
         let count_vec = countbamheader(&params);
         // let _none = writer_fn((&count_vec).to_vec(), "counts.txt.gz".to_string());
-        let _none = writer_fn((&count_vec).to_vec(), "counts.txt.gz".to_string());
+        let _none = writer_fn((&count_vec).to_vec(), params.outfile.to_string());
         eprintln!("\nDone!!\n\n");
         return;
     }
