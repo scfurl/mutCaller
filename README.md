@@ -67,29 +67,85 @@ mutCaller UNALIGNED --barcodes_file <barcodes_file> --fastq1 <fastq1> --fastq2 <
 ##### Help menu
 
 ```sh
-mutCaller 0.3
-copyright Scott Furlan
-mutCaller is a command line tool for aligning and counting long-read sequence specific for HLA alleles in single cell
-libraries
+mutcaller 0.3.0
+Scott Furlan
+Single nucleotide variant counting pipeline for single cell genomics data
 
 USAGE:
-    mutCaller [FLAGS] [OPTIONS] --alleles <alleles_file> --bam <bam>
+    mutcaller [SUBCOMMAND]
 
 FLAGS:
     -h, --help       Prints help information
-    -s, --ret_seq    include this flag to return sequence in molecule_info text file
     -V, --version    Prints version information
-    -v, --verbose    verbose
+
+SUBCOMMANDS:
+    ALIGNED      Count variants in previously aligned data
+    UNALIGNED    Count variants after aligning data using minimap2
+    help         Prints this message or the help of the given subcommand(s)
+```
+
+ALIGNED help
+```sh
+
+mutcaller-ALIGNED
+Count variants in previously aligned data
+
+USAGE:
+    mutcaller ALIGNED [FLAGS] [OPTIONS] --bam <bam>
+
+FLAGS:
+    -h, --help       Prints help information
+    -r               return sequence
+    -V, --version    Prints version information
 
 OPTIONS:
-    -l, --level <align_level>       align to 'genome', 'transcriptome', or 'both'; default is 'both'
-    -a, --alleles <alleles_file>    table of hla genes to search for (tsv file)
-    -b, --bam <bam>                 input bam
-    -c, --cb_tag <cb>               character to parse cell barcode; default = 'CB'
-    -o, --out <output_folder>       folder for output; default 'out'
-    -t, --threads <threads>         threads
-    -u, --umi_tag <umi>             character to parse umi; default = 'XM'
+    -b, --bam <bam>            input bam
+    -p <cbpos>                 position of cb in header; default is 6 (not zero indexed)
+    -c <cbsep>                 character to parse cell barcode; default = 'XC='
+    -m <method>                method to process using 'header' or 'tag'; default is 'header'
+    -o, --outfile <outfile>    name of output file; will be gz compressed text file of output; default = "counts.txt.gz"
+    -w <sampleheader>          location of an optional string in header to return in output
+    -s <stringsep>             character to parse header; default is ';'
+    -t, --threads <threads>    threads
+    -q <umipos>                position of umi in header; default is 5 (not zero indexed)
+    -u <umisep>                character to parse umi; default = 'XM='
+
 ```
+
+UNALIGNED help
+
+```sh
+mutcaller-UNALIGNED
+Count variants after aligning data using minimap2
+
+USAGE:
+    mutcaller UNALIGNED [FLAGS] [OPTIONS] --barcodes_file <barcodes_file> --fastq1 <fastq1> --fastq2 <fastq2> --genome <genome> --variants <variants>
+
+FLAGS:
+    -h, --help          Prints help information
+    -k, --keep_files    use this flag to keep files (default is remove intermediate files)
+    -V, --version       Prints version information
+    -q, --quiet         use this flag to run in quiet mode (no verbosity)
+
+OPTIONS:
+    -a, --aligner <aligner>                aligner software - currently mm2 (default) and kallisto are supported
+    -b, --barcodes_file <barcodes_file>    barcodes_file
+    -c, --cb_length <cb_len>               length of umi sequence
+    -i, --fastq1 <fastq1>                  input fastq with barcodes
+    -j, --fastq2 <fastq2>                  input fastq with read
+    -g, --genome <genome>                  fasta for minimap2 or transcriptome index for kallisto
+    -o, --output <output>                  output filename for compressed counts (defaults to counts_mm.txt.gz)
+    -r, --read_len <read_len>              read 2 length (default 90)
+    -t, --threads <threads>                threads
+    -u, --umi_length <umi_len>             length of umi sequence
+    -v, --variants <variants>              path to variants.tsv file (SNVs with mm2 only supported currently) with the
+                                           following formatting per line - seqname\tstart\tref_nt\tquery_nt\tname; e.g.
+                                           chr12,112450407,A,G,PTPN11_227A>G
+
+```
+
+
+
  
 ### Output
  
