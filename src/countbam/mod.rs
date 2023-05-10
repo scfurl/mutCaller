@@ -59,7 +59,7 @@ struct Params {
 
 
 fn load_params() -> Params {
-    let yaml = load_yaml!("params_countbam.yml");
+    let yaml = load_yaml!("../cli.yml");
     let params = App::from_yaml(yaml).get_matches();
     let bam = params.value_of("bam").unwrap();
     let threads = params.value_of("threads").unwrap_or("1");
@@ -106,7 +106,7 @@ fn load_params() -> Params {
 
 
 
-fn main() {
+pub fn countbam_run() {
     let verbose = true;
     let config = LogConfigBuilder::builder()
         .path("./countbam.log")
