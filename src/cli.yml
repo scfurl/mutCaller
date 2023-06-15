@@ -1,0 +1,180 @@
+name: mutcaller
+version: "0.4.0"
+author: Scott Furlan
+about: Single nucleotide variant counting pipeline for single cell genomics data
+subcommands:
+    - VCF:
+        name: "VARIANTS"
+        about: "variants file debugging"
+        args:
+            - variants:
+                long: variants
+                short: s
+                takes_value: true
+                required: true
+                help: path to variants.tsv or vcf file (SNVs only supported currently); For tsv, example formating = seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
+            - qual:
+                long: qual
+                short: q
+                takes_value: true
+                required: false
+                help: filter for quality (float); default = 95.0 (VCF files only)
+            - verbose:
+                long: verbose
+                short: v
+                takes_value: false
+                required: false
+                help: use this flag to run in verbose mode
+    - ALIGNED:
+        name: "ALIGNED"
+        about: "Count variants in previously aligned data"
+        args:
+            - bam:
+                long: bam
+                short: b
+                takes_value: true
+                required: true
+                help: aligned bam file with cell barcode and umi in tags
+            - variants:
+                long: variants
+                short: s
+                takes_value: true
+                required: true
+                help: path to variants.tsv or vcf file (SNVs only supported currently); For tsv, example formating = seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
+            - output:
+                long: output
+                short: o
+                takes_value: true
+                required: false
+                help: output path (defaults to 'out'); inside folder a counts file will be called 'counts.txt.gz', log will be called mutcaller.log
+            - threads:
+                long: threads
+                short: t
+                takes_value: true
+                required: false
+                help: threads
+            - cb:
+                long: cb_tag
+                short: c
+                help: bam tag containing cell barcode; default = 'CB'
+                takes_value: true
+                required: false
+            - umi:
+                long: umi_tag
+                short: u
+                help: bam tag containing umi; default = 'XM'
+                takes_value: true
+                required: false
+            - verbose:
+                long: verbose
+                short: v
+                takes_value: false
+                required: false
+                help: use this flag to run in verbose mode
+            - qual:
+                long: qual
+                short: q
+                takes_value: true
+                required: false
+                help: filter for variant quality (float); default = 95.0; only used if VCF file type is supplied
+    - UNALIGNED:
+        name: "UNALIGNED"
+        about: "Count variants after aligning data"
+        args:
+            - fastq1:
+                long: fastq1
+                short: i
+                takes_value: true
+                required: true
+                help: input fastq with barcodes
+            - fastq2:
+                long: fastq2
+                short: j
+                takes_value: true
+                required: true
+                help: input fastq with read
+            - genome:
+                long: genome
+                short: g
+                takes_value: true
+                required: true
+                help: fasta for minimap2 or transcriptome index for kallisto
+            - variants:
+                long: variants
+                short: s
+                takes_value: true
+                required: true
+                help: path to variants.tsv or vcf file (SNVs only supported currently); For tsv, example formating = seqname\tstart\tref_nt\tquery_nt\tname; e.g. chr12,112450407,A,G,PTPN11_227A>G
+            - barcodes_file:
+                long: barcodes_file
+                short: b
+                takes_value: true
+                required: true
+                help: barcodes_file
+            - output:
+                long: output
+                short: o
+                takes_value: true
+                required: false
+                help: output path (defaults to 'out'); inside folder a counts file will be called 'counts.txt.gz', log will be called mutcaller.log
+            - threads:
+                long: threads
+                short: t
+                takes_value: true
+                required: false
+                help: threads
+            - cb_len:
+                long: cb_length
+                short: c
+                takes_value: true
+                required: false
+                help: length of umi sequence
+            - umi_len:
+                long: umi_length
+                short: u
+                takes_value: true
+                required: false
+                help: length of umi sequence
+            - aligner:
+                long: aligner
+                short: a
+                takes_value: true
+                required: false
+                help: aligner software - currently minimap (default) and STAR are supported; if not available on command line supply in loc_aligner argument
+            - aligner_loc:
+                long: aligner_loc
+                short: l
+                takes_value: true
+                required: false
+                help: path to aligner e.g. /app/software/CellRanger/6.0.1/lib/bin/STAR
+            # - aligner_args:
+            #     long: aligner_args
+            #     short: x
+            #     takes_value: true
+            #     required: false
+            #     help: additional args supplied to aligner; wrap in quotes
+            - qual:
+                long: qual
+                short: q
+                takes_value: true
+                required: false
+                help: filter for variant quality (float); default = 95.0; only used if VCF file type is supplied
+            - read_len:
+                long: read_len
+                short: r
+                takes_value: true
+                required: false
+                help: read 2 length (default 90)
+            - keep_files:
+                long: keep_files
+                short: k
+                takes_value: false
+                required: false
+                help: use this flag to keep files (default is remove intermediate files)
+            - verbose:
+                long: verbose
+                short: v
+                takes_value: false
+                required: false
+                help: use this flag to run in verbose mode
+after_help: "Note: this is a work in progress. Use with caution."

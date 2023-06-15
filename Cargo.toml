@@ -1,11 +1,17 @@
 [package]
 name = "mutcaller_rust"
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Single nucleotide variant counting pipeline for single cell genomics data"
+repository = "https://github.com/furlan-lab/mutCaller"
+readme = "README.md"
+license = "MIT"
+documentation = "https://github.com/furlan-lab/mutCaller"
+exclude = [".gitignore"]
 
 [dependencies]
-bam = "0.1.4"
+# bam = "0.1.4"
+bam = { git = "https://gitlab.com/scfurl/bam.git", version = "0.1.5" }
 clap = { version = "2.33.0", features = ["yaml"] }
 fastq = "0.6.0"
 flate2 = "1.0.24"
@@ -16,12 +22,14 @@ serde_derive = "1.0.140"
 serde = "1.0.147"
 csv = "1.1.6"
 itertools = "0.10.0"
+rayon = "1.7.0"
+log = "0.4"
+vcf = "0.6.1"
+simplelog = { version = "^0.11.0", features = ["paris"] }
 
 
 [[bin]]
 name = "mutcaller"
-path = "src/mutcaller.rs"
+path = "src/main.rs"
 
-[[bin]]
-name = "countbam"
-path = "src/countbam.rs"
+
